@@ -3,4 +3,6 @@
 from troll.interface import Interface
 
 class IView(Interface):
-    pass
+    """
+        Base class for all view
+    """

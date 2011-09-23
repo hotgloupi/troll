@@ -2,5 +2,5 @@
 
 import hashlib
 
-def hashPassword(app, password):
-    return hashlib.md5(app.salt % password).hexdigest()
+def hashPassword(salt, password):
+    return hashlib.md5(salt % password).hexdigest()

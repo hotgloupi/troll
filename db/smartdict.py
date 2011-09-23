@@ -25,8 +25,11 @@ class SmartDictMeta(type):
                 dct['__primary_keys__'] = tuple()
             if 'Broker' not in dct:
                 dct['Broker'] = makeBroker(cls)
-            dct['Broker'].__type__ = cls
-        return type.__new__(cls, name, bases, dct)
+            new_type = type.__new__(cls, name, bases, dct)
+            dct['Broker'].__type__ = new_type
+            return new_type
+        else:
+            return type.__new__(cls, name, bases, dct)
 
     @classmethod
     def _prepareInterface(cls, fields, interface):

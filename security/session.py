@@ -25,10 +25,10 @@ class Session(object):
         return permission in self.permissions
 
 class SessionStore(threading.local):
-    def __init__(self):
+    def __init__(self, conn):
         threading.local.__init__(self)
         self._sessions = {}
-        self.anon = UserSession()
+        self.anon = Session(conn)
 
     def get(self, h):
         return self._sessions.get(h)
