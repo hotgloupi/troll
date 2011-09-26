@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+from datetime import datetime
 import hashlib
 import threading
 
@@ -25,10 +26,12 @@ class Session(object):
         return permission in self.permissions
 
 class SessionStore(threading.local):
-    def __init__(self, conn):
+    def __init__(self, app):
+        print "Init SessionStore"
         threading.local.__init__(self)
         self._sessions = {}
-        self.anon = Session(conn)
+        with app.pool.conn() as conn:
+            self.anon = Session(conn)
 
     def get(self, h):
         return self._sessions.get(h)
@@ -42,24 +45,19 @@ class SessionStore(threading.local):
         return self.anon
 
 def generateNewSession(app, user):
-    print "generate new session for user %(login)s (%(id)d)" % user
-    conn = app.dbconn()
-    curs = conn.cursor()
-    session_id = user.session_id
-    if session_id:
-        db.Session.Broker.delete(curs, ('id', 'eq', session_id))
-    valid = False
-    base = (app.salt % str(datetime.now())) + user.password
-    while not valid:
-        h = hashlib.md5(base).hexdigest()
-        if db.Session.Broker.fetchone(curs, ('hash', 'eq', h)) is None:
-            valid = True
-        else:
-            base += app.salt % str(datetime.now())
-    session = Session({'hash': h})
-    db.Session.Broker.insert(curs, session)
-    print "session", session.id, 'with hash =', session.hash
-    user.session_id = session.id
-    db.User.Broker.update(conn.cursor(), user)
-    conn.commit()
+    print "generate new session for user %(mail)s (%(id)d)" % user
+    with app.pool.conn() as conn:
+        curs = conn.cursor()
+        valid = False
+        salt = app.conf['salt']
+        base = (salt % str(datetime.now())) + user.password
+        while not valid:
+            h = hashlib.md5(base).hexdigest()
+            if db.Session.Broker.fetchone(curs, ('hash', 'eq', h)) is None:
+                valid = True
+            else:
+                base += salt % str(datetime.now())
+            session = db.Session({'hash': h, 'user_id': user.id})
+        db.Session.Broker.insert(curs, session)
+        conn.commit()
     return session.hash

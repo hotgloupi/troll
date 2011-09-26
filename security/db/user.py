@@ -5,14 +5,13 @@ from troll.db.table import Table
 from troll.db.field import Int, String, Mail
 from troll.db import broker
 
-from role import Role
+from troll.security.db.role import Role
 
 class IUser(Interface):
     id = Int("User id", None, min=1)
     mail = Mail("Email", 'anon')
     password = String("Hashed password", '', min=50)
-    fullname = String("Full name", 'Anonymous', min=4, max=250)
-    session_id = Int("Session id", 0, min=-1)
+    fullname = String("Full name", 'Anonymous', min=1, max=250)
     role_id = String("Associated role", 'anonymous', min=1)
 
 class User(Table):
