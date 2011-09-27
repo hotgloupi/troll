@@ -52,6 +52,7 @@ class BaseView(AbstractView):
     """
     __viewers__ = ViewerStore()
     __template_dir__ = None
+    __template__ = None
 
     def __init__(self):
         assert self.__template_dir__ is not None
@@ -67,7 +68,10 @@ class BaseView(AbstractView):
             )
         return self._viewer
 
-    def render(self, template, obj=None):
+    def render(self, template=None, obj=None):
+        if template is None:
+            template = self.__template__
+        assert template is not None
         if obj is None:
             obj = {}
 

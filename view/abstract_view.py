@@ -1,11 +1,9 @@
 # -*- encoding: utf-8 -*-
 
-import abc
 import inspect
 import web
 
 class AbstractView(object):
-    __metaclass__ = abc.ABCMeta
 
     _exposed_methods = None
 
@@ -28,19 +26,6 @@ class AbstractView(object):
                         }
 
         return cls._exposed_methods
-
-
-    @abc.abstractproperty
-    def app(self):
-        """
-            This method is defined internally. You can use it in all
-            view implementations.
-            >>> class MyView(AbstractView):
-            >>>     @expose
-            >>>     def index(self):
-            >>>         return app.session.user['fullname']
-            >>>
-        """
 
     def GET(self, *args):
         method = None

@@ -30,6 +30,9 @@ class Application(object):
     @property
     def conf(self): return self._conf
 
+    @property
+    def conn(self): return self._pool.conn()
+
     def __init__(self, conf, views, objects):
         self._conf = conf
         self._pool = db.Pool(conf['database']['connect_string'])

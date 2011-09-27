@@ -3,7 +3,7 @@
 class Field(object):
     def __init__(self, descr, default):
         self.name = None
-        self.descr = descr
+        self.descr = unicode(descr)
         self.default = default
 
     def validate(self, value):
@@ -44,6 +44,8 @@ class String(Field):
             return False
         return True
 
+class Text(String):
+    pass
 
 class Mail(Field):
     pass
@@ -55,3 +57,4 @@ class Date(Field):
 
 class Bool(Field):
     pass
+

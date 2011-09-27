@@ -4,9 +4,10 @@ import web
 from genshi import HTML
 
 from base_view import BaseView
+from interface import IHTMLView
 from expose import expose
 
-class Page(BaseView):
+class Page(BaseView, IHTMLView):
 
     __skeleton__ = None
     __template__ = None

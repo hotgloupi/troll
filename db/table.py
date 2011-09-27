@@ -6,7 +6,7 @@ class Table(SmartDict):
     pass
 
 def makeTable(interface, table, pkeys=('id',), fkeys={}):
-    class _BasicSmartDict(SmartDict):
+    class _BasicSmartDict(Table):
         __implements__ = interface
         __table__ = table
         __primary_keys__ = pkeys

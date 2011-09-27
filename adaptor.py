@@ -1,5 +1,9 @@
 # -*- encoding: utf-8 -*-
 
+import itertools
+
+from interface import getInterfaces
+
 """
     Let's say we have to convert Data into a PDF
     >>> class Data(object):
@@ -34,27 +38,50 @@
 """
 _adaptors = {}
 
-def adapt(obj, *interfaces):
+def dumpAdaptors():
+    for targets, adaptors in _adaptors.iteritems():
+        for interfaces, adaptor in adaptors.iteritems():
+            print 'adapts (%s,) to (%s,) with %s' % (
+                ', '.join(t.__name__ for t in targets),
+                ', '.join(i.__name__ for i in interfaces),
+                adaptor.__name__
+            )
+
+def adapt(objs, *interfaces):
     global _adaptors
     """
         Adapt instance obj to given interfaces
     """
-    interfaces = tuple(sorted(interfaces))
-    adaptors = _adaptors.get(interfaces)
+    if not isinstance(objs, tuple):
+        objs = (objs,)
+    families = []
+    for t in (type(o) for o in objs):
+        family = [t]
+        while len(t.__bases__) == 1 and t.__bases__[0] != object:
+            t = t.__bases__[0]
+            family.append(t)
+        families.append(family)
+    def combinations(families):
+        if len(families) == 1:
+            for e in families[0]: yield (e,)
+        elif len(families) > 1:
+            for e in families[0]:
+                for c in combinations(families[1:]):
+                    yield (e,) + c
 
-    if adaptors is not None:
-        adaptor = adaptors.get(obj.__class__)
-        if adaptor is not None:
-            return adaptor(obj)
-        else:
-            raise Exception("Cannot adapt %s to %s " % (
-                str(obj.__class__),
-                str(interfaces)
-            ))
-    else:
-        raise Exception("No adapters found for %s " %
+    adaptors = None
+    for types in combinations(families):
+        adaptors = _adaptors.get(types)
+        if adaptors is not None:
+            interfaces = tuple(sorted(interfaces))
+            adaptor = adaptors.get(interfaces)
+            if adaptor is not None:
+                return adaptor(*objs)
+    if adaptors is None:
+        raise Exception("Cannot adapt %s to %s " % (
+            str(objs),
             str(interfaces)
-        )
+        ))
 
 def adapts(*classes):
     """
@@ -76,28 +103,52 @@ def adapts(*classes):
         'MyAdaptor'
     """
     global _adaptors
-    class MetaClass(type):
-        def __new__(cls, name, bases, dct):
-            adaptor = type.__new__(cls, name, bases, dct)
-            interfaces = getInterfaces(adaptor)
-            register(adaptor, interfaces, classes)
-            combinations = []
-            for n in range(1, len(interfaces)):
-                combinations.extend(
-                    tuple(sorted(c)) for c in itertools.combinations(interfaces, n)
-                )
-            for c in combinations:
-                if  c not in _adaptors:
-                    register(adaptor, c, classes)
-    return MetaClass
+    #class MetaClass(type):
+    #    def __new__(cls, name, bases, dct):
+    #        print "BITE", bases
+    #        adaptor = type.__new__(cls, name, bases, dct)
+    def makeMetaClass(name, bases, dct):
+        metabases = tuple(set(type(b) for b in bases))
+        metaclass = type('Meta_' + '_'.join(str(b) for b in bases), metabases, {})
+        adaptor = metaclass(name, bases, dct)
+        interfaces = tuple(sorted(getInterfaces(adaptor)))
+        register(adaptor, interfaces, classes)
+        combinations = []
+        for n in range(1, len(interfaces)):
+            combinations.extend(
+                tuple(sorted(c)) for c in itertools.combinations(interfaces, n)
+            )
+        for c in combinations:
+            if  c not in _adaptors:
+                register(adaptor, c, classes)
+        print 'registered adaptor', name, 'for', interfaces
+        return adaptor
+
+    return makeMetaClass
 
 def register(adaptor, interfaces, targets):
     global _adaptors
     assert len(interfaces)
+    #families = []
+    #for t in targets:
+    #    family = [t]
+    #    while len(t.__bases__) == 1 and t.__bases__[0] != object:
+    #        t = t.__bases__[0]
+    #        family.append(t)
+    #    families.append(family)
+    #def combinations(families):
+    #    if len(families) == 1:
+    #        for e in families[0]: yield (e,)
+    #    elif len(families) > 1:
+    #        for e in families[0]:
+    #            for c in combinations(families[1:]):
+    #                yield (e,) + c
+
+    #for types in combinations(families):
+    types = targets
+    adaptors = _adaptors.setdefault(types, {})
     interfaces = tuple(sorted(interfaces))
-    adaptors = _adaptors.setdefault(interfaces, {})
-    for target in targets:
-        adaptors[target] = adaptor
+    adaptors[interfaces] = adaptor
 
 if __name__ == "__main__":
     import doctest

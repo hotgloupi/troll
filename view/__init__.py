@@ -13,5 +13,7 @@ from troll.view.interface import IHTMLView
 from troll.view.interface import IJsonView
 from troll.view.interface import IXMLView
 from troll.view.interface import IEditView
+from troll.view.interface import IWidget
 from troll.view.object_view import ObjectView
 from troll.view.page import Page
+from troll.view import adaptors
