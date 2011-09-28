@@ -5,7 +5,7 @@ class Interface(object):
 
 def getInterfaces(obj):
     def rec(node, bases):
-        print "on node", node, isinstance(node, Interface)
+        #print "on node", node, isinstance(node, Interface)
         if node == Interface:
             return True
         if any([rec(parent, bases) for parent in node.__bases__]):

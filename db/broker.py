@@ -21,6 +21,10 @@ class Broker(object):
             'or',
             ('login', 'neq', 'bite'),
         ]
+        'sort': [
+            ('login', True),    # descending == True
+            'id'                # <> ('id', True)
+        ]
     }
     """
     @classmethod
@@ -41,7 +45,11 @@ class Broker(object):
         if conditions:
             conditions_string, params = cls._parseConditions(conditions, _type)
             req += conditions_string
-        print req, params
+        sortstring = lambda f, d: table_name + '.' + f + (d and ' DESC' or ' ASC')
+        sort_fields = [sortstring(f, d) for f, d in cls._getSort(criterias)]
+        if sort_fields:
+            req += ' ORDER BY ' + ', '.join(sort_fields)
+        print req, params or []
         if params is not None:
             curs.execute(req, tuple(params))
         else:
@@ -143,6 +151,27 @@ class Broker(object):
             return criterias
         else:
             return criterias.get('conditions')
+
+    @classmethod
+    def _getSort(cls, criterias):
+        if not isinstance(criterias, dict):
+            return
+        s = criterias.get('sort')
+        if isinstance(s, basestring):
+            yield (s, False)
+        elif isinstance(s, tuple):
+            assert len(s) == 2
+            yield s
+        elif isinstance(s, list):
+            for e in s:
+                if isinstance(e, basestring):
+                    yield (e, False)
+                elif isinstance(e, tuple):
+                    assert len(e) == 2
+                    yield e
+
+
+
 
 def makeBroker(_type):
     class _Broker(Broker):
