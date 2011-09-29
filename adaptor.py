@@ -119,7 +119,7 @@ def adapts(*classes):
                 tuple(sorted(c)) for c in itertools.combinations(interfaces, n)
             )
         for c in combinations:
-            if  c not in _adaptors:
+            if  classes not in _adaptors or c not in _adaptors[classes]:
                 register(adaptor, c, classes)
         print 'registered adaptor', name, 'for', interfaces
         return adaptor
@@ -145,8 +145,7 @@ def register(adaptor, interfaces, targets):
     #                yield (e,) + c
 
     #for types in combinations(families):
-    types = targets
-    adaptors = _adaptors.setdefault(types, {})
+    adaptors = _adaptors.setdefault(targets, {})
     interfaces = tuple(sorted(interfaces))
     adaptors[interfaces] = adaptor
 
