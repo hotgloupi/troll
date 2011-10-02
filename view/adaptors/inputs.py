@@ -24,30 +24,26 @@ class Input(IInput):
             'label':  self.field.descr,
             'table': self.obj.__table__,
             'value': unicode(self.obj[self.field.name]),
+            'input_class': '',
+            'label_class': '',
         }
         params.update(kwargs)
         return params
 
-    def _renderBool(self):
-        vars =  {
-            'table': self.obj.__table__,
-            'name': self.field.name,
-            'label': unicode(self.field.descr),
-            'type': 'checkbox',
-            'checked': self.obj[self.field.name] and u'checked="checked"' or u'',
-        }
+    def _renderBool(self, **kwargs):
+        checked = self.obj[self.field.name] and u'checked="checked"' or u''
         html = u"""
-            <label for="%(table)s.%(name)s">%(label)s</label>
-            <input type="%(type)s" name="%(table)s.%(name)s" %(checked)s />
-        """ % vars
+            <label for="%(table)s.%(name)s" class="%(label_class)s">%(label)s</label>
+            <input type="%(type)s" name="%(table)s.%(name)s" class="%(input_class)s" %(checked)s />
+        """ % self.params(type="checkbox", checked=checked, **kwargs)
         return HTML(html)
 
 
-    def _renderString(self):
+    def _renderString(self, **kwargs):
         html = u"""
-            <label for="%(table)s.%(name)s">%(label)s</label>
-            <input type="%(type)s" name="%(table)s.%(name)s" value="%(value)s" />
-        """ % self.params(type='text')
+            <label for="%(table)s.%(name)s" class="%(label_class)s">%(label)s</label>
+            <input type="%(type)s" name="%(table)s.%(name)s" class="%(input_class)s" value="%(value)s" />
+        """ % self.params(type='text', **kwargs)
         return HTML(html)
 
 def createInput(field_type, render_method):
