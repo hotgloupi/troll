@@ -38,14 +38,14 @@ def prepareDatabase(conn, classes, roles, permissions, grants, salt):
     conn.commit()
 
     curs = conn.cursor()
-    for id, description in roles:
+    for id, description in roles.iteritems():
         curs.execute("SELECT 1 FROM role WHERE id = ?", (id,))
         if not curs.fetchone():
             role = Role({'id':id, 'description': description})
             Role.Broker.insert(curs, role)
             print "  => Role '%s' inserted" % id
 
-    for id, description in permissions:
+    for id, description in permissions.iteritems():
         curs.execute("SELECT 1 FROM permission WHERE id = ?", (id,))
         if not curs.fetchone():
             permission = Permission({'id': id, 'description': description})
