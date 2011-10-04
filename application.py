@@ -2,6 +2,7 @@
 
 import web
 
+from troll.conf import getConf
 from troll import constants
 from troll import db
 from troll import security
@@ -34,7 +35,7 @@ class Application(object):
     def conn(self): return self._pool.conn()
 
     def __init__(self, conf, views, objects):
-        self._conf = conf
+        self._conf = getConf(conf)
         self._pool = db.Pool(conf['database']['connect_string'])
         self._objects = [
             security.db.User,
