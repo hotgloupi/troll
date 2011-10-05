@@ -21,6 +21,7 @@ class Application(object):
     @property
     def session_hash(self):
         return web.cookies().get(constants.SESSION_COOKIE_NAME)
+
     @session_hash.setter
     def session_hash(self, h):
         web.setcookie(constants.SESSION_COOKIE_NAME, h, 3600)
@@ -98,6 +99,7 @@ class Application(object):
                     else:
                         s = self._sessions.set(h, security.session.Session(conn, user))
         print "got", s
+        web.setcookie(constants.SESSION_COOKIE_NAME, h, 3600)
         return s
 
 
