@@ -9,6 +9,13 @@ from troll import security
 from troll.view import IView
 from troll.preparedb import prepareDatabase
 
+def makeBoundedViewType(app, ViewType):
+    assert issubclass(ViewType, IView)
+    class BoundedView(ViewType):
+        def __init__(self):
+            super(BoundedView, self).__init__(app)
+    return BoundedView
+
 class Application(object):
     _views = None
     _sessions = None
@@ -145,14 +152,7 @@ class Application(object):
         for id, view in self._views.iteritems():
             for pattern in view['patterns']:
                 urls.extend([pattern, id])
-
-            assert issubclass(view['view'], IView)
-            assert hasattr(view['view'], '__template_dir__')
-            _app = self
-            class View(view['view']):
-                def __init__(self):
-                    super(View, self).__init__(_app)
-            views[id] = View
+            views[id] = makeBoundedViewType(self, view['view'])
 
         web.config.debug = self._conf['debug']
         if not urls:
