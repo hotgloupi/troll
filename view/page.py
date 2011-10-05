@@ -3,11 +3,10 @@
 import web
 from genshi import HTML
 
-from base_view import BaseView
-from interface import IHTMLView
+from html_view import HTMLView
 from expose import expose
 
-class Page(BaseView, IHTMLView):
+class Page(HTMLView):
 
     __skeleton__ = None
     __template__ = None
@@ -21,12 +20,12 @@ class Page(BaseView, IHTMLView):
             template = self.__template__
         if obj is None:
             obj = {}
-        res = BaseView.render(self, template, obj)
+        res = super(Page, self).render(template, obj)
         if web.ctx.env.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             return res
         else:
-            var = {'content': res, 'HTML': HTML}
+            var = {'content': HTML(res)}
             var.update(obj)
-            return BaseView.render(self, self.__skeleton__, var)
+            return super(Page, self).render(self.__skeleton__, var)
 
 

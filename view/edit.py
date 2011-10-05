@@ -2,11 +2,11 @@
 
 from troll.adaptor import adapt
 from troll.db.table import Table
-from troll.view.view import View
+from troll.view.html_view import HTMLView
 from troll.view.interface import IEditView
 from troll.view.interface import IInput
 
-class Edit(View, IEditView):
+class Edit(HTMLView, IEditView):
 
     def __init__(self, obj, app, fields=None):
         print "bite"
@@ -14,8 +14,7 @@ class Edit(View, IEditView):
         self._table = type(obj)
         assert issubclass(self._table, Table)
         self._fields = (fields is None and [self._table.__fields__] or [fields])[0]
-        View.__init__(self)
-        IEditView.__init__(self, app)
+        HTMLView.__init__(self, app)
 
     @property
     def obj(self): return self._obj

@@ -41,9 +41,9 @@ class ViewerStore(threading.local):
         return viewer
 
 
-class BaseView(AbstractView):
+class HTMLView(AbstractView):
     """
-        Base class for all view
+        Base class for an HTML view
         >>> class MyView(BaseView):
         >>>     @expose
         >>>     def index(self):
@@ -51,12 +51,14 @@ class BaseView(AbstractView):
         >>>
     """
     __viewers__ = ViewerStore()
-    __template_dir__ = None
     __template__ = None
+    __template_dir__ = None
 
-    def __init__(self):
-        assert self.__template_dir__ is not None
+    def __init__(self, app):
         self._viewer = None
+        if self.__template_dir__ is None:
+            self.__template_dir__ = app.conf['template_dir']
+        AbstractView.__init__(self, app)
 
     @property
     def viewer(self):
@@ -77,6 +79,9 @@ class BaseView(AbstractView):
 
         if 'session' not in obj:
             obj['session'] = self.app.session
+
+        if 'user' not in obj:
+            obj['user'] = self.app.session.user
 
         if 'path' not in obj:
             obj['path'] = web.ctx.path

@@ -3,9 +3,14 @@
 import inspect
 import web
 
-class AbstractView(object):
+from troll.view.interface import IView
+
+class AbstractView(IView):
 
     _exposed_methods = None
+
+    def __init__(self, app):
+        IView.__init__(self, app)
 
     @classmethod
     def getExposedMethods(cls):

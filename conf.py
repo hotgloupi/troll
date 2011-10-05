@@ -19,11 +19,11 @@ def getConf(base_conf={}):
 
     return {
         'debug': base_conf.get('debug', True),
-        'database': base_conf['database'],
-        'salt': base_conf['salt'],
+        'database': base_conf.get('database', {'connect_string': 'db.sqlite3'}),
+        'salt': base_conf.get('salt', constants.SALT),
         'roles': roles,
         'permissions': permissions,
         'grants': grants,
-        'template_dir': base_conf['template_dir'],
+        'template_dir': base_conf.get('template_dir', 'templates'),
         'encoding': base_conf.get('encoding', 'utf-8'),
     }

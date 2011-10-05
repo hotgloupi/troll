@@ -3,6 +3,7 @@
 import os
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATE_DIR = os.path.join(ROOT_DIR, 'templates')
+SALT = "This is a TRoll SALT '%s'"
 
 SESSION_COOKIE_NAME = "SESSION_ID"
 
@@ -42,12 +43,10 @@ GRANTS = {
     'user': ('logout', 'unsubscribe'),
     'manager': (
         'logout', 'unsubscribe', 'manage',
-        'add_project', 'del_project', 'mod_project',
     ),
     'administrator': (
         'logout', 'manage',
         'add_user', 'del_user', 'mod_user',
-        'add_project', 'del_project', 'mod_project',
     ),
 }
 

@@ -6,7 +6,7 @@ from troll.conf import getConf
 from troll import constants
 from troll import db
 from troll import security
-from troll.view import BaseView, ObjectView
+from troll.view import IView
 from troll.preparedb import prepareDatabase
 
 class Application(object):
@@ -34,9 +34,9 @@ class Application(object):
     @property
     def conn(self): return self._pool.conn()
 
-    def __init__(self, conf, views, objects):
+    def __init__(self, views, objects, conf={}):
         self._conf = getConf(conf)
-        self._pool = db.Pool(conf['database']['connect_string'])
+        self._pool = db.Pool(self._conf['database']['connect_string'])
         self._objects = [
             security.db.User,
             security.db.Role,
@@ -49,7 +49,8 @@ class Application(object):
         self._views = {}
 
         for id, view in views.iteritems():
-            if view.__template_dir__ is None:
+            if not hasattr(view, '__template_dir__') or \
+               view.__template_dir__ is None:
                 view.__template_dir__ = self._conf['template_dir']
             self._registerView(view, id)
 
@@ -103,6 +104,7 @@ class Application(object):
     def _registerView(self, view, id):
         assert isinstance(id, basestring)
         assert id not in self._views
+        assert issubclass(view, IView)
 
         exposed_methods = view.getExposedMethods()
         patterns = set([])
@@ -142,15 +144,12 @@ class Application(object):
             for pattern in view['patterns']:
                 urls.extend([pattern, id])
 
-            assert issubclass(view['view'], BaseView)
+            assert issubclass(view['view'], IView)
             assert hasattr(view['view'], '__template_dir__')
-
+            _app = self
             class View(view['view']):
-                _app = self
-                @property
-                def app(self): return self._app
-
-
+                def __init__(self):
+                    super(View, self).__init__(_app)
             views[id] = View
 
         web.config.debug = self._conf['debug']
