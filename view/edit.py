@@ -9,7 +9,6 @@ from troll.view.interface import IInput
 class Edit(HTMLView, IEditView):
 
     def __init__(self, obj, app, fields=None):
-        print "bite"
         self._obj = obj
         self._table = type(obj)
         assert issubclass(self._table, Table)

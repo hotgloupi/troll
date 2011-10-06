@@ -7,7 +7,7 @@ class Field(object):
         self.default = default
 
     def validate(self, value):
-        return value is not None
+        return ''
 
 class Int(Field):
 
@@ -18,12 +18,12 @@ class Int(Field):
 
     def validate(self, value):
         if not isinstance(value, int):
-            return False
+            return 'Value %s is not an instance of int' % str(value)
         if self.min is not None and value < self.min:
-            return False
+            return 'Number %d is greater than %d' % (value, self.min)
         if self.max is not None and value > self.max:
-            return False
-        return True
+            return 'Number %d is lower than %d' % (value, self.min)
+        return ''
 
     def __str__(self):
         return "<field.Int in [%s, %s]>" % (
@@ -39,10 +39,13 @@ class String(Field):
 
     def validate(self, value):
         if self.min is not None and len(value) < self.min:
-            return False
+            return 'String too short'
         if self.max is not None and len(value) > self.max:
-            return False
-        return True
+            return 'String too long'
+        return ''
+
+class Password(String):
+    pass
 
 class Text(String):
     pass

@@ -16,3 +16,4 @@ from troll.view.interface import IEditView
 from troll.view.interface import IWidget
 from troll.view.page import Page
 from troll.view import adaptors
+from troll.view.input_widget import getInputWidgets

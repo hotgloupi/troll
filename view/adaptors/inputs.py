@@ -5,6 +5,8 @@ from troll.application import Application
 from troll.db.field import Bool
 from troll.db.field import Date
 from troll.db.field import Int
+from troll.db.field import Mail
+from troll.db.field import Password
 from troll.db.field import String
 from troll.db.field import Text
 from troll.db.table import Table
@@ -16,6 +18,7 @@ class Input(IInput):
     def __init__(self, field, obj, app):
         self.field = field
         self.obj = obj
+        self.error = None
         IInput.__init__(self, app)
 
     def params(self, **kwargs):
@@ -26,25 +29,31 @@ class Input(IInput):
             'value': unicode(self.obj[self.field.name]),
             'input_class': '',
             'label_class': '',
+            'input_attrs': '',
+            'error': '',
         }
         params.update(kwargs)
+        if self.error is not None:
+            params['error'] = """<span class="error">%s</span>""" % self.error
         return params
+
+    def _renderInput(self, **kwargs):
+        html = u"""
+            <label for="%(table)s.%(name)s" class="%(label_class)s">%(label)s</label>
+            <input type="%(type)s" name="%(table)s.%(name)s" class="%(input_class)s" value="%(value)s" %(input_attrs)s />
+            %(error)s
+        """ % self.params(**kwargs)
+        return HTML(html)
 
     def _renderBool(self, **kwargs):
         checked = self.obj[self.field.name] and u'checked="checked"' or u''
-        html = u"""
-            <label for="%(table)s.%(name)s" class="%(label_class)s">%(label)s</label>
-            <input type="%(type)s" name="%(table)s.%(name)s" class="%(input_class)s" %(checked)s />
-        """ % self.params(type="checkbox", checked=checked, **kwargs)
-        return HTML(html)
-
+        return self._renderInput(type="checkbox", input_attrs=checked, **kwargs)
 
     def _renderString(self, **kwargs):
-        html = u"""
-            <label for="%(table)s.%(name)s" class="%(label_class)s">%(label)s</label>
-            <input type="%(type)s" name="%(table)s.%(name)s" class="%(input_class)s" value="%(value)s" />
-        """ % self.params(type='text', **kwargs)
-        return HTML(html)
+        return self._renderInput(type='text', **kwargs)
+
+    def _renderPassword(self, **kwargs):
+        return self._renderInput(type='password', **kwargs)
 
 def createInput(field_type, render_method):
     class _Input(Input):
@@ -67,7 +76,9 @@ createInput(Bool, Input._renderBool)
 createInput(Date, lambda _: 'date')
 createInput(Int, lambda _: 'int')
 
+createInput(Mail, Input._renderString)
 createInput(String, Input._renderString)
+createInput(Password, Input._renderPassword)
 createInput(Text,
     lambda self: HTML(u"""
         <label for="%(table)s.%(name)s">%(label)s</label>

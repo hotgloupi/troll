@@ -49,12 +49,6 @@ class SmartDict(object):
             self._values[f.name] = values.get(f.name, f.default)
         # XXX check for wrong keys from values ?
 
-    def validate(self):
-        for f in self.__fields__:
-            if not f.validate():
-                return False
-        return True
-
     def __contains__(self, key):
         return key in self.__fields_by_name__
 
@@ -76,8 +70,6 @@ class SmartDict(object):
             return object.__setattr__(self, key, val)
         if self._values[key] == val:
             return
-        if not f.validate(val):
-            raise ValueError("The value '%s' is not allowed for field '%s'" % (str(val), str(f)))
         self._values[key] = val
         self._dirty_fields.add(key)
 
