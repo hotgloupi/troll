@@ -85,4 +85,5 @@ class HTMLView(AbstractView):
 
         if 'path' not in obj:
             obj['path'] = web.ctx.path
+        web.header('Content-Type', 'text/html')
         return self.viewer.render(template, obj)

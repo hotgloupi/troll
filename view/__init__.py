@@ -2,6 +2,7 @@
 
 from troll.view.abstract_view import AbstractView
 from troll.view.html_view import HTMLView
+from troll.view.json_view import JsonView
 from troll.view.edit import Edit
 from troll.view.expose import expose
 from troll.view.expose import expose
