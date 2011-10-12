@@ -11,6 +11,12 @@ class Broker(object):
         'eq': '=',
         'neq': '!=',
         'not': 'NOT',
+        'startswith': lambda val: ('LIKE', val + u'%'),
+        'endswith': lambda val: ('LIKE', u'%' + val),
+        'contains': lambda val: ('LIKE', u'%' + val + u'%'),
+        'istartswith': lambda val: ('ILIKE', val + u'%'),
+        'iendswith': lambda val: ('ILIKE', u'%' + val),
+        'icontains': lambda val: ('ILIKE', u'%' + val + u'%'),
     }
 
 
@@ -56,6 +62,23 @@ class Broker(object):
             curs.execute(req)
         for row in curs:
             yield _type(dict(zip(columns, row)))
+
+    @classmethod
+    def count(cls, curs, criterias={}, _type=None):
+        if _type is None:
+            _type = cls.__type__
+        assert _type is not None
+        req = "SELECT COUNT(*) FROM %s" % _type.__table__
+        conditions = cls._getConditions(criterias)
+        params = None
+        if conditions:
+            cond_string, params = cls._parseConditions(conditions, _type)
+            req += cond_string
+        if params is not None:
+            curs.execute(req, tuple(params))
+        else:
+            curs.execute(req)
+        return curs.fetchone()[0]
 
     @classmethod
     def fetchone(cls, curs, criterias, columns=None, _type=None):
@@ -131,9 +154,14 @@ class Broker(object):
                     # XXX jointures ici c[0].split('.')[0]
                     conditions_strings.append(c[0])
                 has_operator = False
-                conditions_strings.append(cls.__operators__[c[1]])
-                conditions_strings.append('?')
-                params.append(c[2])
+                op = cls.__operators__[c[1]]
+                if isinstance(op, basestring):
+                    conditions_strings.extend([op, '?'])
+                    param = c[2]
+                else:
+                    op, param = op(c[2])
+                    conditions_strings.extend([op, '?'])
+                params.append(param)
             elif isinstance(c, basestring):
                 conditions_strings.append(cls.__operators__[c])
                 has_operator = True
