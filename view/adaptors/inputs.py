@@ -27,22 +27,25 @@ class Input(IInput):
             'label':  self.field.descr,
             'table': self.obj.__table__,
             'value': unicode(self.obj[self.field.name]),
+            'input_tag': 'input',
             'input_class': '',
             'label_class': '',
             'input_attrs': '',
             'error': '',
+            'type_attr': '',
         }
         params.update(kwargs)
         if self.error is not None:
             params['error'] = """<span class="error">%s</span>""" % self.error
+        if 'type' in params:
+            params['type_attr'] = 'type="%(type)s"' % params
         return params
 
     def _renderInput(self, **kwargs):
         html = u"""
-            <label for="%(table)s.%(name)s" class="%(label_class)s">%(label)s</label>
-            <input type="%(type)s" name="%(table)s.%(name)s" class="%(input_class)s" value="%(value)s" %(input_attrs)s />
-            %(error)s
-        """ % self.params(**kwargs)
+<label for="%(table)s.%(name)s" class="%(label_class)s">%(label)s</label>
+<%(input_tag)s %(type_attr)s name="%(table)s.%(name)s" class="%(input_class)s" value="%(value)s" %(input_attrs)s />
+%(error)s""" % self.params(**kwargs)
         return HTML(html)
 
     def _renderBool(self, **kwargs):
@@ -55,22 +58,14 @@ class Input(IInput):
     def _renderPassword(self, **kwargs):
         return self._renderInput(type='password', **kwargs)
 
+    def _renderText(self, **kwargs):
+        return self._renderInput(input_tag='textarea', **kwargs)
+
 def createInput(field_type, render_method):
     class _Input(Input):
         __metaclass__ = adapts(field_type, Table, Application)
         render = render_method
     return _Input
-
-def renderInput(_type, field, obj):
-    return HTML("""
-        <label for="%(table)s.%(name)s">%(label)s</label>
-    """ % {
-        'table': obj.__table__,
-        'name': field.name,
-        'label': field.descr,
-        'type': _type,
-        'value': str(obj[field.name]),
-    })
 
 createInput(Bool, Input._renderBool)
 createInput(Date, lambda _: 'date')
@@ -79,15 +74,4 @@ createInput(Int, lambda _: 'int')
 createInput(Mail, Input._renderString)
 createInput(String, Input._renderString)
 createInput(Password, Input._renderPassword)
-createInput(Text,
-    lambda self: HTML(u"""
-        <label for="%(table)s.%(name)s">%(label)s</label>
-        <textarea name="%(table)s.%(name)s">%(value)s</textarea>
-    """ % {
-        'table': self.obj.__table__,
-        'name': self.field.name,
-        'label': self.field.descr,
-        'type': 'text',
-        'value': self.obj[self.field.name].decode('utf-8'),
-    })
-)
+createInput(Text, Input._renderText)
