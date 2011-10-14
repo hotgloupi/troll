@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-from datetime import datetime
+import time
 import hashlib
 import threading
 
@@ -45,19 +45,16 @@ class SessionStore(threading.local):
         return self.anon
 
 def generateNewSession(app, user):
-    print "generate new session for user %(mail)s (%(id)d)" % user
     with app.pool.conn() as conn:
         curs = conn.cursor()
-        valid = False
         salt = app.conf['salt']
-        base = (salt % str(datetime.now())) + user.password
-        while not valid:
+        base = ''
+        while True:
+            base = salt % (base + str(time.time()))
             h = hashlib.md5(base).hexdigest()
             if db.Session.Broker.fetchone(curs, ('hash', 'eq', h)) is None:
-                valid = True
-            else:
-                base += salt % str(datetime.now())
-            session = db.Session({'hash': h, 'user_id': user.id})
+                break
+        session = db.Session({'hash': h, 'user_id': user.id})
         db.Session.Broker.insert(curs, session)
         conn.commit()
     return session.hash
