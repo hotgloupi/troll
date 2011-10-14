@@ -13,53 +13,62 @@ from troll.db.table import Table
 from troll.view.interface import IInput
 
 from genshi import HTML
+from genshi.template import MarkupTemplate
 
 class Input(IInput):
+
+    _input = u"""
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:py="http://genshi.edgewall.org/" py:strip="">
+<label for="${table}.${name}" class="${label_class}">${label}</label>
+<input type="${input_type}" name="${table}.${name}" class="${input_class}" value="${value}" py:attrs="input_attrs" />
+<span py:if="error" class="error">${error}</span>
+</html>"""
+
+    _textarea = u"""
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:py="http://genshi.edgewall.org/" py:strip="">
+<label for="${table}.${name}" class="${label_class}">${label}</label>
+<textarea name="${table}.${name}" class="${input_class}" py:attrs="input_attrs">${value}</textarea>
+<span py:if="error" class="error">${error}</span>
+</html>"""
+
     def __init__(self, field, obj, app):
         self.field = field
         self.obj = obj
         self.error = None
         IInput.__init__(self, app)
 
-    def params(self, **kwargs):
+    def params(self, kwargs):
         params = {
             'name': self.field.name,
             'label':  self.field.descr,
             'table': self.obj.__table__,
             'value': unicode(self.obj[self.field.name]),
-            'input_tag': 'input',
             'input_class': '',
             'label_class': '',
             'input_attrs': '',
-            'error': '',
-            'type_attr': '',
+            'error': self.error,
         }
         params.update(kwargs)
-        if self.error is not None:
-            params['error'] = """<span class="error">%s</span>""" % self.error
-        if 'type' in params:
-            params['type_attr'] = 'type="%(type)s"' % params
         return params
 
-    def _renderInput(self, **kwargs):
-        html = u"""
-<label for="%(table)s.%(name)s" class="%(label_class)s">%(label)s</label>
-<%(input_tag)s %(type_attr)s name="%(table)s.%(name)s" class="%(input_class)s" value="%(value)s" %(input_attrs)s />
-%(error)s""" % self.params(**kwargs)
-        return HTML(html)
+    def generate(self, string, **kwargs):
+        return MarkupTemplate(string).generate(**self.params(kwargs))
 
     def _renderBool(self, **kwargs):
-        checked = self.obj[self.field.name] and u'checked="checked"' or u''
-        return self._renderInput(type="checkbox", input_attrs=checked, **kwargs)
+        attrs = kwargs.get('input_attrs', {})
+        if self.obj[self.field.name]:
+            attrs[u'checked'] = u'checked'
+        return self.generate(self._input, input_type="checkbox", input_attrs=attrs, **kwargs)
 
     def _renderString(self, **kwargs):
-        return self._renderInput(type='text', **kwargs)
+        return self.generate(self._input, input_type='text', **kwargs)
 
     def _renderPassword(self, **kwargs):
-        return self._renderInput(type='password', **kwargs)
+        return self.generate(self._input, input_type='password', **kwargs)
 
     def _renderText(self, **kwargs):
-        return self._renderInput(input_tag='textarea', **kwargs)
+        return self.generate(self._textarea, **kwargs)
+
 
 def createInput(field_type, render_method):
     class _Input(Input):
