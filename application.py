@@ -88,8 +88,9 @@ class Application(object):
 
     def _getSession(self, h):
         print "get session for", h
-        if h is None:
-            return self._sessions.anon
+        if not h:
+            anon_user = self._sessions.anon.user
+            h = self.session_hash = security.session.generateNewSession(self, anon_user)
         s = self._sessions.get(h)
         if s is None:
             with self._pool.conn() as conn:
