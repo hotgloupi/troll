@@ -38,6 +38,8 @@ class String(Field):
         self.max = max
 
     def validate(self, value):
+        if not isinstance(value, basestring):
+            return "Value %s is not an instance of string" % str(value)
         if self.min is not None and len(value) < self.min:
             return 'String too short'
         if self.max is not None and len(value) > self.max:
