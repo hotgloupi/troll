@@ -10,9 +10,11 @@ from troll.security.db.role import Role
 class IUser(Interface):
     id = Int("User id", None, min=1)
     mail = Mail("Mail", 'anon')
-    password = Password("Password", '', min=6)
+    password = Password("Password", '', min=0)
     fullname = String("Full name", 'Anonymous', min=1, max=250)
     role_id = String("Associated role", 'anonymous', min=1)
+    auth_type = String("Authentication type", 'local', min=1)
+    meta = String("Json metadata about the user", '{}', min=0)
 
 class User(Table):
     __implements__ = IUser

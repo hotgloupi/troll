@@ -29,4 +29,6 @@ def makeTable(interface, table, pkeys=('id',), fkeys={}):
         __table__ = table
         __primary_keys__ = pkeys
         __foreign_keys__ = fkeys
+
+    _BasicSmartDict.__name__ = ''.join(map(str.capitalize, table.split('_'))) + 'Table'
     return _BasicSmartDict

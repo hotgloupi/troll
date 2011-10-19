@@ -21,6 +21,12 @@ class Application(object):
     _sessions = None
     _pool = None
     _conf = None
+    _auth_plugins = None
+
+    available_auth_plugins = {
+        'google': (security.db.AuthGoogle, security.plugins.AuthGoogle),
+        'facebook': (security.db.AuthFacebook, security.plugins.AuthFacebook),
+    }
 
     @property
     def pool(self): return self._pool
@@ -31,7 +37,7 @@ class Application(object):
 
     @session_hash.setter
     def session_hash(self, h):
-        web.setcookie(constants.SESSION_COOKIE_NAME, h, 3600)
+        web.setcookie(constants.SESSION_COOKIE_NAME, h, 999999)
 
     @property
     def session(self): return self._getSession(self.session_hash)
@@ -52,9 +58,17 @@ class Application(object):
             security.db.Grant,
             security.db.Session,
         ]
+
         assert hasattr(objects, '__iter__')
         self._objects.extend(objects)
         self._views = {}
+        self._auth_plugins = {}
+        if 'auth' in self._conf:
+            for plugin_name, plugin_conf in self._conf['auth'].iteritems():
+                plugin_table, plugin = self.available_auth_plugins[plugin_name]
+                print plugin_table, plugin
+                self._objects.append(plugin_table)
+                self._auth_plugins[plugin_name] = plugin(plugin_conf)
 
         for id, view in views.iteritems():
             if not hasattr(view, '__template_dir__') or \
@@ -73,8 +87,37 @@ class Application(object):
             h = security.session.generateNewSession(self, user)
             session = self._getSession(h)
             self.session_hash = h
-            print "set", constants.SESSION_COOKIE_NAME, "to", h
         return success
+
+    def authenticateWith(self, auth_plugin, *args, **kwargs):
+        plugin = self._auth_plugins.get(auth_plugin)
+        if plugin is None:
+            raise Exception("Authentication plugin '%s' not found" % str(auth_plugin))
+        res = plugin.authenticate(self, *args, **kwargs)
+        if res is None:
+            return False
+
+        auth, user = res
+        with app.conn as conn:
+            existing_user = db.User.Broker.fetchone(
+                conn.cursor(),
+                ('mail', 'eq', user.mail)
+            )
+            if existing_user is not None:
+                user = existing_user
+                auth.Broker.delete(
+                    conn.cursor(),
+                    ('user_id', 'eq', user.id)
+                )
+            else:
+                db.User.Broker.insert(conn.cursor(), user)
+            assert user.id is not None
+            auth.user_id = user.id
+            auth.Broker.insert(conn.cursor(), auth)
+        h = security.session.generateNewSession(self, user)
+        session = self._getSession(h)
+        self.session_hash = h
+        return True
 
     def logout(self):
         h = self.session_hash
