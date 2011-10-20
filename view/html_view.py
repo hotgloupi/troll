@@ -78,10 +78,10 @@ class HTMLView(AbstractView):
             obj = {}
 
         if 'session' not in obj:
-            obj['session'] = self.app.session
+            obj['session'] = self.session
 
         if 'user' not in obj:
-            obj['user'] = self.app.session.user
+            obj['user'] = self.user
 
         if 'path' not in obj:
             obj['path'] = web.ctx.path

@@ -26,7 +26,7 @@ def exposeWhen(*permissions):
         method = expose(method)
         def wrapper(*args, **kwargs):
             self = args[0]
-            if all(self.app.session.can(p) for p in _permissions):
+            if all(self.session.can(p) for p in _permissions):
                 return method(*args, **kwargs)
             else:
                 raise web.Forbidden()
