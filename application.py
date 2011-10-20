@@ -98,8 +98,8 @@ class Application(object):
             return False
 
         auth, user = res
-        with app.conn as conn:
-            existing_user = db.User.Broker.fetchone(
+        with self.conn as conn:
+            existing_user = user.Broker.fetchone(
                 conn.cursor(),
                 ('mail', 'eq', user.mail)
             )
@@ -110,7 +110,7 @@ class Application(object):
                     ('user_id', 'eq', user.id)
                 )
             else:
-                db.User.Broker.insert(conn.cursor(), user)
+                user.Broker.insert(conn.cursor(), user)
             assert user.id is not None
             auth.user_id = user.id
             auth.Broker.insert(conn.cursor(), auth)
