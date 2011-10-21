@@ -30,7 +30,9 @@ class Broker(object):
         'sort': [
             ('login', True),    # descending == True
             'id'                # <> ('id', True)
-        ]
+        ],
+        'limit': 12,
+        'offset': 15,
     }
     """
     @classmethod
@@ -51,10 +53,16 @@ class Broker(object):
         if conditions:
             conditions_string, params = cls._parseConditions(conditions, _type)
             req += conditions_string
+
         sortstring = lambda f, d: table_name + '.' + f + (d and ' DESC' or ' ASC')
         sort_fields = [sortstring(f, d) for f, d in cls._getSort(criterias)]
         if sort_fields:
             req += ' ORDER BY ' + ', '.join(sort_fields)
+
+        limit = cls._getLimit(criterias)
+        if limit:
+            req += ' LIMIT %d' % int(limit)
+
         print req, params or []
         if params is not None:
             curs.execute(req, tuple(params))
@@ -106,6 +114,8 @@ class Broker(object):
         if len(_type.__primary_keys__) == 1:
             pkey = _type.__primary_keys__[0]
             obj[pkey] = curs.lastrowid
+        else:
+            print "PKEYS", _type.__primary_keys__
 
     @classmethod
     def delete(cls, curs, criterias={}, _type=None):
@@ -168,6 +178,18 @@ class Broker(object):
             else:
                 raise Exception("Unknown condition type '%s'" % str(c))
         return (" WHERE " + ' '.join(conditions_strings), params)
+
+    @classmethod
+    def _getLimit(cls, criterias):
+        if isinstance(criterias, dict):
+            return criterias.get('limit')
+        return None
+
+    @classmethod
+    def _getOffset(cls, criterias):
+        if isinstance(criterias, dict):
+            return criterias.get('offset')
+        return None
 
     @classmethod
     def _getConditions(cls, criterias):

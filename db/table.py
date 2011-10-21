@@ -3,6 +3,13 @@
 from troll.db.smartdict import SmartDict
 
 class Table(SmartDict):
+
+    @classmethod
+    def byId(cls, curs, *args):
+        assert len(args) == len(cls.__primary_keys__)
+        cond = zip(cls.__primary_keys__, ('eq',) * len(args), args)
+        return cls.Broker.fetchone(curs, cond)
+
     def validate(self, *fields):
         if not fields:
             fields = self.__fields__
@@ -24,11 +31,11 @@ class Table(SmartDict):
             self.Broker.update(conn.cursor(), self)
 
 def makeTable(interface, table, pkeys=('id',), fkeys={}):
-    class _BasicSmartDict(Table):
+    class NewTable(Table):
         __implements__ = interface
         __table__ = table
         __primary_keys__ = pkeys
         __foreign_keys__ = fkeys
 
-    _BasicSmartDict.__name__ = ''.join(map(str.capitalize, table.split('_'))) + 'Table'
-    return _BasicSmartDict
+    NewTable.__name__ = ''.join(map(str.capitalize, table.split('_'))) + 'Table'
+    return NewTable

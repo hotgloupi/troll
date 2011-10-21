@@ -23,6 +23,10 @@ class SmartDictMeta(type):
             dct['__slots__'] = tuple()
             if '__primary_keys__' not in dct:
                 dct['__primary_keys__'] = tuple()
+            elif isinstance(dct['__primary_keys__'], basestring):
+                dct['__primary_keys__'] = (dct['__primary_keys__'],)
+            else:
+                dct['__primary_keys__'] = tuple(dct['__primary_keys__'])
             if 'Broker' not in dct:
                 dct['Broker'] = makeBroker(cls)
             new_type = type.__new__(cls, name, bases, dct)

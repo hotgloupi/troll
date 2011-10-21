@@ -2,14 +2,15 @@
 
 import time
 import hashlib
-import threading
 
 from troll.security import db
+from troll.tools import ThreadedDict
 
-class Session(object):
+class Session(ThreadedDict):
     __slots__ = ('user', 'permissions',)
 
     def __init__(self, dbconn, user=None):
+        ThreadedDict.__init__(self)
         if user is None:
             user = db.User()
         self.user = user
@@ -25,11 +26,9 @@ class Session(object):
     def can(self, permission):
         return permission in self.permissions
 
-class SessionStore(threading.local):
+class SessionStore(object):
     def __init__(self, app):
-        print "Init SessionStore"
-        threading.local.__init__(self)
-        self._sessions = {}
+        self._sessions = ThreadedDict()
         with app.pool.conn() as conn:
             self.anon = Session(conn)
 
