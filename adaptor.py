@@ -121,7 +121,7 @@ def adapts(*classes):
         for c in combinations:
             if  classes not in _adaptors or c not in _adaptors[classes]:
                 register(adaptor, c, classes)
-        print 'registered adaptor', name, 'for', interfaces
+        #print 'registered adaptor', name, 'for', interfaces
         return adaptor
 
     return makeMetaClass

@@ -63,7 +63,6 @@ class Broker(object):
         if limit:
             req += ' LIMIT %d' % int(limit)
 
-        print req, params or []
         if params is not None:
             curs.execute(req, tuple(params))
         else:
@@ -109,13 +108,10 @@ class Broker(object):
             ', '.join('?' * len(_type.__fields__))
         )
         values = tuple(obj[f.name] for f in _type.__fields__)
-        print req, values
         curs.execute(req, values)
         if len(_type.__primary_keys__) == 1:
             pkey = _type.__primary_keys__[0]
             obj[pkey] = curs.lastrowid
-        else:
-            print "PKEYS", _type.__primary_keys__
 
     @classmethod
     def delete(cls, curs, criterias={}, _type=None):
@@ -125,7 +121,6 @@ class Broker(object):
         conditions = cls._getConditions(criterias)
         conditions_string, params = cls._parseConditions(conditions, _type)
         req += conditions_string
-        print req, params
         curs.execute(req, params)
 
     @classmethod
@@ -143,7 +138,6 @@ class Broker(object):
         )
         params = tuple(obj[k] for k in columns)
         params += tuple(obj[k] for k in _type.__primary_keys__)
-        print req, params
         curs.execute(req, params)
 
     @classmethod

@@ -16,12 +16,13 @@ class Session(ThreadedDict):
         self.user = user
         self.permissions = {}
 
-        grants = db.Grant.Broker.fetch(
-            dbconn.cursor(),
-            ('role_id', 'eq', user['role_id'])
-        )
-        for grant in grants:
-            self.permissions[grant['permission_id']] = True
+        if dbconn is not None:
+            grants = db.Grant.Broker.fetch(
+                dbconn.cursor(),
+                ('role_id', 'eq', user['role_id'])
+            )
+            for grant in grants:
+                self.permissions[grant['permission_id']] = True
 
     def can(self, permission):
         return permission in self.permissions
@@ -29,7 +30,7 @@ class Session(ThreadedDict):
 class SessionStore(object):
     def __init__(self, app):
         self._sessions = ThreadedDict()
-        with app.pool.conn() as conn:
+        with app.virtual_admin_conn as conn:
             self.anon = Session(conn)
 
     def get(self, h):
@@ -43,17 +44,14 @@ class SessionStore(object):
         self._sessions[h] = self.anon
         return self.anon
 
-def generateNewSession(app, user):
-    with app.pool.conn() as conn:
-        curs = conn.cursor()
-        salt = app.conf['salt']
+def generateNewSession(conn, salt, user):
+    with conn:
         base = ''
         while True:
             base = salt % (base + str(time.time()))
             h = hashlib.md5(base).hexdigest()
-            if db.Session.Broker.fetchone(curs, ('hash', 'eq', h)) is None:
+            if db.Session.Broker.fetchone(conn.cursor(), ('hash', 'eq', h)) is None:
                 break
         session = db.Session({'hash': h, 'user_id': user.id})
-        db.Session.Broker.insert(curs, session)
-        conn.commit()
+        db.Session.Broker.insert(conn.cursor(), session)
     return session.hash

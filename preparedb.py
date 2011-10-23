@@ -4,72 +4,38 @@ from troll import db
 from troll.security.db import Role, Permission, Grant, User
 from troll.security.password import hashPassword
 
-fields_create = (
-    (db.field.Int, "INTEGER"),
-    (db.field.String, "TEXT"),
-    (db.field.Mail, "TEXT"),
-    (db.field.Date, "TIMESTAMP"),
-    (db.field.Bool, "BOOL"),
-)
+fields_create = {
+    db.field.Int: "INTEGER",
+    db.field.String: "TEXT",
+    db.field.Mail: "TEXT",
+    db.field.Date: "TIMESTAMP",
+    db.field.Bool: "BOOL",
+    db.field.Password: "TEXT",
+    db.field.Text: "TEXT",
+}
 
-def prepareClass(conn, cls):
-    curs = conn.cursor()
-    req = "CREATE TABLE %s (%s)"
-    fields = []
-    for f in cls.__fields__:
-        for t, s in fields_create:
-            if isinstance(f, t):
-                fields.append(f.name + ' ' + s)
-                if f.name in cls.__primary_keys__:
-                    fields[-1] += ' PRIMARY KEY'
-                break
-    try:
+def prepareClass(conn, cls, initial_data):
+    is_new = False
+    if not conn.hasTable(cls.__table__):
+        req = "CREATE TABLE %s (%s)"
+        fields = []
+        for f in cls.__fields__:
+            s = fields_create[f.__class__]
+            fields.append(f.name + ' ' + s)
+            if f.name in cls.__primary_keys__:
+                fields[-1] += ' PRIMARY KEY'
         req = req % (cls.__table__, ', '.join(fields))
-        #print "Create table '%s' with '%s'" % (cls.__table__, req)
-        curs.execute(req)
-    except Exception, e:
-        print "  => Cannot create table '%s': %s" % (cls.__table__, e)
-    else:
-        print "  => Created"
+        conn.cursor().execute(req)
+        is_new = True
+    if is_new:
+        for data in initial_data:
+            cls.Broker.insert(conn.cursor(), data)
 
-def prepareDatabase(conn, classes, roles, permissions, grants, salt):
+def prepareDatabase(conn, classes, salt, initial_data):
     for cls in classes:
-        prepareClass(conn, cls)
-    conn.commit()
+        prepareClass(conn, cls, initial_data.get(cls, []))
 
-    curs = conn.cursor()
-    for id, description in roles.iteritems():
-        curs.execute("SELECT 1 FROM role WHERE id = ?", (id,))
-        if not curs.fetchone():
-            role = Role({'id':id, 'description': description})
-            Role.Broker.insert(curs, role)
-            print "  => Role '%s' inserted" % id
-
-    for id, description in permissions.iteritems():
-        curs.execute("SELECT 1 FROM permission WHERE id = ?", (id,))
-        if not curs.fetchone():
-            permission = Permission({'id': id, 'description': description})
-            Permission.Broker.insert(curs, permission)
-            print "  => Permission '%s' inserted" % id
-
-    for role, role_permissions in grants.iteritems():
-        assert isinstance(role_permissions, tuple)
-        curs.execute("SELECT 1 FROM role WHERE id = ?", (role,))
-        if curs.fetchone() is None:
-            raise Exception("Unknown role '%s'" % str(role))
-        for permission in role_permissions:
-            curs.execute("SELECT 1 FROM permission WHERE id = ?", (permission,))
-            if curs.fetchone() is None:
-                raise Exception("Unkown permission '%s'" % str(permission))
-            curs.execute("""
-                SELECT 1 FROM grant WHERE role_id = ? AND permission_id = ?
-            """, (role, permission))
-            if curs.fetchone() is None:
-                print " => '%s can %s'" % (role, permission)
-                grant = Grant({'role_id': role, 'permission_id': permission})
-                Grant.Broker.insert(curs, grant)
-
-    admin = User.Broker.fetchone(curs, {'conditions':[('mail', 'eq', 'admin')]}, columns=['id'])
+    admin = User.Broker.fetchone(conn.cursor(), ('mail', 'eq', 'admin'))
     if admin is None:
         print "You need to create 'admin' account"
         from getpass import getpass
@@ -94,8 +60,5 @@ def prepareDatabase(conn, classes, roles, permissions, grants, salt):
         })
         User.Broker.insert(conn.cursor(), admin)
     else:
-        print "  => 'admin' account already there"
-
-    conn.commit()
-
+        conn.logger.debug("'admin' account already there")
 

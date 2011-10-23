@@ -1,22 +1,29 @@
 # -*- encoding: utf-8 -*-
 
+import logging
+
 from troll.tools import ThreadedDict
 
 class LoggerStore(object):
+    """
 
-    _loggers = ThreadedDict()
+    """
 
-    _format = '[%(name)s][%(levelno)s]'
+    _format = '[%(levelname)s][%(name)s] %(user)s(%(user_id)d): %(message)s'
 
-    @classmethod
-    def get(cls, name):
+    def __init__(self, conf):
+        self._loggers = ThreadedDict()
+
+    def get(cls, name, session):
         assert isinstance(name, basestring)
         logger = cls._loggers.get(name)
         if logger is None:
             cls._loggers[name] = logger = cls._buildNew(name)
-        return logger
+        return logging.LoggerAdapter(logger, {
+            'user': session.user.mail,
+            'user_id': session.user.id or 0,
+        })
 
-    @classmethod
     def _buildNew(cls, name):
         logger = logging.Logger(name)
         formatter = logging.Formatter(cls._format)
@@ -24,5 +31,4 @@ class LoggerStore(object):
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger
-
 

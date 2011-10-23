@@ -10,6 +10,7 @@ class IView(Interface):
         self._app = app
         self._session = None
         self._user = None
+        self._logger = None
 
     @property
     def app(self): return self._app
@@ -25,6 +26,13 @@ class IView(Interface):
         if self._user is None:
             self._user = self.session.user
         return self._user
+
+    @property
+    def logger(self):
+        if self._logger is None:
+            name = self.__class__.__module__ + '.' + self.__class__.__name__
+            self._logger = self._app.getLogger(name)
+        return self._logger
 
 class IEditView(IView):
     pass

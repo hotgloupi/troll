@@ -8,12 +8,15 @@ from troll import db
 from troll import security
 from troll.view import IView
 from troll.preparedb import prepareDatabase
+from troll.logger_store import LoggerStore
 
 def makeBoundedViewType(app, ViewType):
     assert issubclass(ViewType, IView)
     class BoundedView(ViewType):
         def __init__(self):
             super(BoundedView, self).__init__(app)
+    BoundedView.__name__ = ViewType.__name__
+    BoundedView.__module__ = ViewType.__module__
     return BoundedView
 
 class Application(object):
@@ -22,35 +25,40 @@ class Application(object):
     _pool = None
     _conf = None
     _auth_plugins = None
+    _logger_store = None
+    _is_running = False
 
     available_auth_plugins = {
         'google': (security.db.AuthGoogle, security.plugins.AuthGoogle),
         'facebook': (security.db.AuthFacebook, security.plugins.AuthFacebook),
     }
 
-    @property
-    def pool(self): return self._pool
-
-    @property
-    def session_hash(self):
-        return web.cookies().get(constants.SESSION_COOKIE_NAME)
-
-    @session_hash.setter
-    def session_hash(self, h):
-        web.setcookie(constants.SESSION_COOKIE_NAME, h, 999999)
-
-    @property
-    def session(self): return self._getSession(self.session_hash)
 
     @property
     def conf(self): return self._conf
 
     @property
-    def conn(self): return self._pool.conn()
+    def conn(self): return self._pool.getConnection(self.session)
 
-    def __init__(self, views, objects, conf={}):
+    @property
+    def logger(self):
+        return self.getLogger('app')
+
+    def getLogger(self, name):
+        if self._is_running:
+            return self._logger_store.get(name, self.session)
+        return self._logger_store.get(name, self._virtual_admin_session)
+
+
+    @property
+    def virtual_admin_conn(self):
+        return self._pool.getConnection(self._virtual_admin_session)
+
+    def __init__(self, views, objects, conf={}, initial_data=[]):
+        self._virtual_admin_session = security.Session(None, security.db.User({'mail':'virtual_admin'}))
         self._conf = getConf(conf)
-        self._pool = db.Pool(self._conf['database']['connect_string'])
+        self._logger_store = LoggerStore(self._conf)
+        self._pool = db.Pool(self._conf['database'], self._logger_store)
         self._objects = [
             security.db.User,
             security.db.Role,
@@ -66,7 +74,7 @@ class Application(object):
         if 'auth' in self._conf:
             for plugin_name, plugin_conf in self._conf['auth'].iteritems():
                 plugin_table, plugin = self.available_auth_plugins[plugin_name]
-                print plugin_table, plugin
+                self.logger.debug("Register auth plugin: %s" % plugin_name)
                 self._objects.append(plugin_table)
                 self._auth_plugins[plugin_name] = plugin(plugin_conf)
 
@@ -76,9 +84,39 @@ class Application(object):
                 view.__template_dir__ = self._conf['template_dir']
             self._registerView(view, id)
 
+        self._initial_data = {
+            security.db.Role: [],
+            security.db.Permission: [],
+            security.db.Grant: [],
+        }
+        for role_id, description in self._conf['roles'].iteritems():
+            self._initial_data[security.db.Role].append(
+                security.db.Role({'id': role_id, 'description': description})
+            )
+
+        for permission_id, description in self._conf['permissions'].iteritems():
+            self._initial_data[security.db.Permission].append(
+                security.db.Permission({'id': permission_id, 'description': description})
+            )
+
+        for role_id, role_permissions in self._conf['grants'].iteritems():
+            assert any(k == role_id for k in self._conf['roles'].iterkeys())
+            for permission_id in role_permissions:
+                self._initial_data[security.db.Grant].append(
+                    security.db.Grant({'role_id': role_id, 'permission_id': permission_id})
+                )
+
+        for data in initial_data:
+            assert isinstance(data, db.Table)
+            assert not isinstance(data, security.db.Role, security.db.Permission, security.db.Grant)
+            slot = self._initial_data.get(data.__class__)
+            if slot is None:
+                self._initial_data[data.__class__] = slot = []
+            slot.append(data)
+
     def authenticate(self, mail, password):
         password_hash = security.password.hashPassword(self._conf['salt'], password)
-        with self._pool.conn() as conn:
+        with self.conn as conn:
             user = security.db.User.Broker.fetchone(conn.cursor(), ('mail', 'eq', mail))
             if not user:
                 return False
@@ -114,7 +152,7 @@ class Application(object):
             assert user.id is not None
             auth.user_id = user.id
             auth.Broker.insert(conn.cursor(), auth)
-        h = security.session.generateNewSession(self, user)
+        h = security.session.generateNewSession(self.virtual_admin_conn, self._conf['salt'], user)
         session = self._getSession(h)
         self.session_hash = h
         return True
@@ -122,7 +160,7 @@ class Application(object):
     def logout(self):
         h = self.session_hash
         if h and self.session.user.id:
-            with self._pool.conn() as conn:
+            with self.conn as conn:
                 security.db.Session.Broker.delete(
                     conn.cursor(),
                     ('hash', 'eq', h)
@@ -130,13 +168,16 @@ class Application(object):
             web.setcookie(constants.SESSION_COOKIE_NAME, '', 3600)
 
     def _getSession(self, h):
-        print "get session for", h
         if not h:
             anon_user = self._sessions.anon.user
-            h = self.session_hash = security.session.generateNewSession(self, anon_user)
+            h = self.session_hash = security.session.generateNewSession(
+                self.virtual_admin_conn,
+                self._conf['salt'],
+                anon_user
+            )
         s = self._sessions.get(h)
         if s is None:
-            with self._pool.conn() as conn:
+            with self.virtual_admin_conn as conn:
                 curs = conn.cursor()
                 session = security.db.Session.Broker.fetchone(curs, ('hash', 'eq', h))
                 if session is None:
@@ -149,8 +190,6 @@ class Application(object):
                         s = self._sessions.setanon(h)
                     else:
                         s = self._sessions.set(h, security.session.Session(conn, user))
-        print "got", s
-        web.setcookie(constants.SESSION_COOKIE_NAME, h, 3600)
         return s
 
 
@@ -181,14 +220,12 @@ class Application(object):
         }
 
     def run(self):
-        with self._pool.conn() as conn:
+        with self.virtual_admin_conn as conn:
             prepareDatabase(
                 conn,
                 self._objects,
-                self._conf['roles'],
-                self._conf['permissions'],
-                self._conf['grants'],
-                self._conf['salt']
+                self._conf['salt'],
+                self._initial_data,
             )
         self._sessions = security.SessionStore(self)
         urls = []
@@ -214,6 +251,21 @@ class Application(object):
 
         # enable fastcgi
         #web.wsgi.runwsgi = lambda func, addr=None: web.wsgi.runfcgi(func, addr)
-        print
+        self._is_running = True
+
+
         app.run()
 
+    session_hash = property(
+        lambda self: web.cookies().get(constants.SESSION_COOKIE_NAME),
+        lambda self, h: web.setcookie(constants.SESSION_COOKIE_NAME, h, 999999),
+        None,
+        "session hash property"
+    )
+
+    session = property(
+        lambda self: self._getSession(self.session_hash),
+        None,
+        None,
+        "session property"
+    )
