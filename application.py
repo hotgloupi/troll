@@ -108,7 +108,7 @@ class Application(object):
 
         for data in initial_data:
             assert isinstance(data, db.Table)
-            assert not isinstance(data, security.db.Role, security.db.Permission, security.db.Grant)
+            assert not isinstance(data, (security.db.Role, security.db.Permission, security.db.Grant))
             slot = self._initial_data.get(data.__class__)
             if slot is None:
                 self._initial_data[data.__class__] = slot = []
@@ -122,7 +122,7 @@ class Application(object):
                 return False
             success = security.db.User.Broker.authenticate(conn.cursor(), mail, password_hash)
         if success:
-            h = security.session.generateNewSession(self, user)
+            h = security.session.generateNewSession(self.virtual_admin_conn, self._conf['salt'], user)
             session = self._getSession(h)
             self.session_hash = h
         return success
