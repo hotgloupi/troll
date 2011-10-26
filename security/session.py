@@ -7,13 +7,12 @@ from troll.security import db
 from troll.tools import ThreadedDict
 
 class Session(ThreadedDict):
-    __slots__ = ('user', 'permissions',)
+    __slots__ = ('user', 'permissions', 'hash')
 
-    def __init__(self, dbconn, user=None):
+    def __init__(self, dbconn, user, hash):
         ThreadedDict.__init__(self)
-        if user is None:
-            user = db.User()
         self.user = user
+        self.hash = hash
         self.permissions = {}
 
         if dbconn is not None:
@@ -27,11 +26,14 @@ class Session(ThreadedDict):
     def can(self, permission):
         return permission in self.permissions
 
+    def clone(self):
+        return self.__class__(None, self.user, self.hash)
+
 class SessionStore(object):
     def __init__(self, app):
         self._sessions = ThreadedDict()
         with app.virtual_admin_conn as conn:
-            self.anon = Session(conn)
+            self._anon = Session(conn, db.User(), None)
 
     def get(self, h):
         return self._sessions.get(h)
@@ -41,8 +43,10 @@ class SessionStore(object):
         return s
 
     def setanon(self, h):
-        self._sessions[h] = self.anon
-        return self.anon
+        s = self._anon.clone()
+        s.hash = h
+        self._sessions[h] = s
+        return s
 
 def generateNewSession(conn, salt, user):
     with conn:

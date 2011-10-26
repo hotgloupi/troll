@@ -55,7 +55,11 @@ class Application(object):
         return self._pool.getConnection(self._virtual_admin_session)
 
     def __init__(self, views, objects, conf={}, initial_data=[]):
-        self._virtual_admin_session = security.Session(None, security.db.User({'mail':'virtual_admin'}))
+        self._virtual_admin_session = security.Session(
+            None,
+            security.db.User({'mail':'virtual_admin'}),
+            None
+        )
         self._conf = getConf(conf)
         self._logger_store = LoggerStore(self._conf)
         self._pool = db.Pool(self._conf['database'], self._logger_store)
@@ -169,7 +173,7 @@ class Application(object):
 
     def _getSession(self, h):
         if not h:
-            anon_user = self._sessions.anon.user
+            anon_user = security.db.User()
             h = self.session_hash = security.session.generateNewSession(
                 self.virtual_admin_conn,
                 self._conf['salt'],
@@ -189,7 +193,7 @@ class Application(object):
                     if user is None:
                         s = self._sessions.setanon(h)
                     else:
-                        s = self._sessions.set(h, security.session.Session(conn, user))
+                        s = self._sessions.set(h, security.session.Session(conn, user, h))
         return s
 
 
