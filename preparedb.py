@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from troll import db
-from troll.security.db import Role, Permission, Grant, User
+from troll.security.db import Role, Permission, Grant, User, AuthLocal
 from troll.security.password import hashPassword
 
 fields_create = {
@@ -31,10 +31,12 @@ def prepareClass(conn, cls, initial_data):
         for data in initial_data:
             cls.Broker.insert(conn.cursor(), data)
 
-def prepareDatabase(conn, classes, salt, initial_data):
+def prepareDatabase(conn, classes, salt, initial_data, need_admin):
     for cls in classes:
         prepareClass(conn, cls, initial_data.get(cls, []))
 
+    if not need_admin:
+        return
     admin = User.Broker.fetchone(conn.cursor(), ('mail', 'eq', 'admin'))
     if admin is None:
         print "You need to create 'admin' account"
@@ -55,10 +57,15 @@ def prepareDatabase(conn, classes, salt, initial_data):
         admin = User({
             'fullname': 'Administrator',
             'mail': 'admin',
-            'password': password,
             'role_id': 'administrator',
         })
         User.Broker.insert(conn.cursor(), admin)
+        assert admin.id is not None
+        AuthLocal.Broker.insert(conn.cursor(), AuthLocal({
+            'user_id': admin.id,
+            'password': password,
+        }))
+
     else:
         conn.logger.debug("'admin' account already there")
 

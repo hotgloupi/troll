@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from troll.adaptor import adapts
-from troll.application import Application
+from troll.application import BaseApplication
 from troll.db.field import Bool
 from troll.db.field import Date
 from troll.db.field import Int
@@ -72,7 +72,7 @@ class Input(IInput):
 
 def createInput(field_type, render_method):
     class _Input(Input):
-        __metaclass__ = adapts(field_type, Table, Application)
+        __metaclass__ = adapts(field_type, Table, BaseApplication)
         render = render_method
     return _Input
 

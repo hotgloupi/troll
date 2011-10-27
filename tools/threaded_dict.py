@@ -17,6 +17,14 @@ class ThreadedDict(object):
         with self._lock:
             return self._d[key]
 
+    def __delitem__(self, key):
+        with self._lock:
+            del self._d[key]
+
+    def __contains__(self, key):
+        with self._lock:
+            return key in self._d
+
     def get(self, key, default=None):
         with self._lock:
             return self._d.get(key, default)

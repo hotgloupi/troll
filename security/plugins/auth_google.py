@@ -20,6 +20,9 @@ class AuthGoogle(object):
         self._redirect_uri = conf['redirect_uri']
 
     def authenticate(self, app):
+        response = {
+            'success': False,
+        }
         i = web.input()
         if 'code' in i:
             try:
@@ -31,21 +34,28 @@ class AuthGoogle(object):
                     'token_type': token['token_type'],
                 })
                 user = self._getUser(auth)
-                return auth, user
+                response = json.loads(i['state'])
+                response.update({
+                    'success': True,
+                    'auth': auth,
+                    'user': user,
+                })
             except Exception, e:
                 traceback.print_exc()
                 print "ERROR: Cannot get google tokens:", e
-                return None
+                response['error'] = 'Failed to obtain access_token from google'
         elif 'error' in i:
-            return None
+            response['error'] = i['error']
         else:
             req = urllib.urlencode({
                 'client_id': self._client_id,
                 'redirect_uri': self._redirect_uri,
                 'scope': self._scope_uri,
                 'response_type': 'code',
+                'state': json.dumps(dict(i.iteritems())),
             })
-            raise web.seeother(self._auth_uri + '?' + req)
+            response['authorization_uri'] = self._auth_uri + '?' + req
+        return response
 
     def _getToken(self, code):
         url = "https://accounts.google.com/o/oauth2/token"

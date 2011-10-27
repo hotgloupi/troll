@@ -48,7 +48,9 @@ def dumpAdaptors():
             )
 
 def adapt(objs, *interfaces):
+    #from pprint import pprint
     global _adaptors
+    #pprint(_adaptors)
     """
         Adapt instance obj to given interfaces
     """
@@ -71,6 +73,7 @@ def adapt(objs, *interfaces):
 
     adaptors = None
     for types in combinations(families):
+        #print "CHECK", types
         adaptors = _adaptors.get(types)
         if adaptors is not None:
             interfaces = tuple(sorted(interfaces))
@@ -127,6 +130,7 @@ def adapts(*classes):
     return makeMetaClass
 
 def register(adaptor, interfaces, targets):
+    #print "register", adaptor, interfaces, targets
     global _adaptors
     assert len(interfaces)
     #families = []
