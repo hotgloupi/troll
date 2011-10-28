@@ -26,6 +26,9 @@ def getConf(base_conf={}):
         'salt': constants.SALT,
         'template_dir': 'templates',
         'encoding': 'utf-8',
+#        'session_store': {
+#            'file': 'filename'
+#        },
     }
     conf.update(base_conf)
     conf.update({

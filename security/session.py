@@ -1,7 +1,11 @@
 # -*- encoding: utf-8 -*-
 
+import os
+import pickle
 import time
 import hashlib
+import threading
+import web
 
 from troll.security import db
 from troll.tools import ThreadedDict
@@ -28,10 +32,44 @@ class SessionStore(object):
 
 
     def __init__(self, app):
+        self._conf = app.conf.get('session_store', {})
+        self._sessions_file = self._conf.get('file')
         self._sessions = ThreadedDict()
         self._app = app
         user = db.User()
         self._anon = self._insertSession('anon_token', user)
+        if self._sessions_file is not None:
+            if os.path.exists(self._sessions_file):
+                try:
+                    with open(self._sessions_file, 'r') as f:
+                        res = pickle.load(f)
+                    for h, data in res.iteritems():
+                        self._reloadSession(h, data[0], data[1])
+                    print "LOADED SESSIONS", res
+                except:
+                    pass
+            self._saveSession(self._app.conf['debug'] and 1 or 20)
+
+
+    def _saveSession(self, sec):
+        def target():
+            while True:
+                time.sleep(sec)
+                l = len(self._sessions)
+                if l == self._last_len:
+                    continue
+                if l > self._last_len + 10:
+                    self._last_len = l - 1
+                    continue
+                s = dict((h, (dict(s.user), s.permissions)) for h, s in self._sessions.iteritems())
+                with open(self._sessions_file, 'wb') as f:
+                    res = pickle.dump(s, f)
+        self._last_len = 0
+        thread = threading.Thread(target=target)
+        thread.start()
+
+    def _reloadSession(self, h, user, permissions):
+        self._sessions[h] = _Session(h, db.User(user), permissions)
 
     def get(self, h):
         assert isinstance(h, basestring)

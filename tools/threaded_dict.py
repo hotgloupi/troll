@@ -7,7 +7,7 @@ class ThreadedDict(object):
 
     def __init__(self):
         self._d = {}
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def __setitem__(self, key, value):
         with self._lock:
@@ -29,5 +29,15 @@ class ThreadedDict(object):
         with self._lock:
             return self._d.get(key, default)
 
+    def iteritems(self):
+        with self._lock:
+            return self._d.iteritems()
 
+    def __iter__(self):
+        with self._lock:
+            return self._d.iteritems()
+
+    def __len__(self):
+        with self._lock:
+            return len(self._d)
 
