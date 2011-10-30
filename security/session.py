@@ -47,7 +47,6 @@ class SessionStore(object):
                         res = pickle.load(f)
                     for h, data in res.iteritems():
                         self._reloadSession(h, db.User(data[0]), data[1], data[2])
-                    print "LOADED SESSIONS", self._sessions
                 except:
                     pass
 
@@ -66,7 +65,6 @@ class SessionStore(object):
         if self._last_save is None or \
            self._last_save - time.time() > 1:
             def getFields(s):
-                print "SESSION", dict(s)
                 is_ok = lambda v: any(isinstance(v, t) for t in [basestring, int, float])
                 return filter(lambda i: is_ok(i[0]) and is_ok(i[1]), s.iteritems())
             sessions = dict(
@@ -75,11 +73,9 @@ class SessionStore(object):
             )
             with open(self._sessions_file, 'wb') as f:
                 res = pickle.dump(sessions, f)
-            print "saved sessions", sessions
 
     def _reloadSession(self, h, user, permissions, fields={}):
         s = self._sessions[h] = _Session(h, user, permissions)
-        print "LOAD SESSION", s, "FOR", user
         s.update(fields)
         return s
 
@@ -97,7 +93,6 @@ class SessionStore(object):
                     )
                     if user is not None:
                         return self._insertSession(h, user)
-        print "SESSION FOR", h, "NOT FOUND"
 
         return self._anon
 

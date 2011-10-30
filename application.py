@@ -98,7 +98,6 @@ class BaseApplication(object):
 
 
     def _getSession(self, h):
-        print "get session for", h
         if h is None:
             s = self.session_store.generateNewSession(
                 self._conf['salt'],
@@ -107,7 +106,6 @@ class BaseApplication(object):
             self.session_hash = s.hash
         else:
             s = self.session_store.get(h)
-        print " ==========>", s, s.hash
         return s
 
     def getPermissionsFor(self, role='anonymous'):
