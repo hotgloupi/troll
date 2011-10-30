@@ -17,6 +17,7 @@ class Broker(object):
         'istartswith': lambda val: ('ILIKE', val + u'%'),
         'iendswith': lambda val: ('ILIKE', u'%' + val),
         'icontains': lambda val: ('ILIKE', u'%' + val + u'%'),
+        'in': lambda values: ('IN', tuple(values)),
     }
 
 
@@ -161,11 +162,15 @@ class Broker(object):
                 op = cls.__operators__[c[1]]
                 if isinstance(op, basestring):
                     conditions_strings.extend([op, '?'])
-                    param = c[2]
+                    params.append(c[2])
                 else:
                     op, param = op(c[2])
-                    conditions_strings.extend([op, '?'])
-                params.append(param)
+                    if isinstance(param, tuple):
+                        params.extend(param)
+                        conditions_strings.extend([op, '(' + ','.join('?'*len(param)) + ')'])
+                    else:
+                        params.append(param)
+                        conditions_strings.extend([op, '?'])
             elif isinstance(c, basestring):
                 conditions_strings.append(cls.__operators__[c])
                 has_operator = True

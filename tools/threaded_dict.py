@@ -40,4 +40,11 @@ class ThreadedDict(object):
     def __len__(self):
         with self._lock:
             return len(self._d)
+    def __str__(self):
+        with self._lock:
+            return str(self._d)
+
+    def update(self, d):
+        with self._lock:
+            return self._d.update(d)
 

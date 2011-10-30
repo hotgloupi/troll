@@ -24,6 +24,10 @@ class _Session(ThreadedDict):
 
     def can(self, permission):
         return permission in self.permissions
+    def __str__(self):
+        return "<Session %s for %s: %s>" % (
+            self.hash, self.user.mail, ThreadedDict.__str__(self)
+        )
 
 class SessionStore(object):
     """
@@ -36,40 +40,48 @@ class SessionStore(object):
         self._sessions_file = self._conf.get('file')
         self._sessions = ThreadedDict()
         self._app = app
-        user = db.User()
-        self._anon = self._insertSession('anon_token', user)
         if self._sessions_file is not None:
             if os.path.exists(self._sessions_file):
                 try:
                     with open(self._sessions_file, 'r') as f:
                         res = pickle.load(f)
                     for h, data in res.iteritems():
-                        self._reloadSession(h, data[0], data[1])
-                    print "LOADED SESSIONS", res
+                        self._reloadSession(h, db.User(data[0]), data[1], data[2])
+                    print "LOADED SESSIONS", self._sessions
                 except:
                     pass
-            self._saveSession(self._app.conf['debug'] and 1 or 20)
 
+        self._anon = self._reloadSession(
+            'anon_token', db.User(),
+            self._app.getPermissionsFor('anonymous')
+        )
+        self._last_save = None
 
-    def _saveSession(self, sec):
-        def target():
-            while True:
-                time.sleep(sec)
-                l = len(self._sessions)
-                if l == self._last_len:
-                    continue
-                if l > self._last_len + 10:
-                    self._last_len = l - 1
-                    continue
-                s = dict((h, (dict(s.user), s.permissions)) for h, s in self._sessions.iteritems())
-                with open(self._sessions_file, 'wb') as f:
-                    res = pickle.dump(s, f)
-        self._last_len = 0
-        thread = threading.Thread(target=target)
-        thread.start()
+    def save(self):
+        self._saveSession()
 
-    def _reloadSession(self, h, user, permissions):
-        self._sessions[h] = _Session(h, db.User(user), permissions)
+    def _saveSession(self):
+        if self._sessions_file is None:
+            return
+        if self._last_save is None or \
+           self._last_save - time.time() > 1:
+            def getFields(s):
+                print "SESSION", dict(s)
+                is_ok = lambda v: any(isinstance(v, t) for t in [basestring, int, float])
+                return filter(lambda i: is_ok(i[0]) and is_ok(i[1]), s.iteritems())
+            sessions = dict(
+                (h, (dict(s.user), s.permissions, getFields(s)))
+                for h, s in self._sessions.iteritems()
+            )
+            with open(self._sessions_file, 'wb') as f:
+                res = pickle.dump(sessions, f)
+            print "saved sessions", sessions
+
+    def _reloadSession(self, h, user, permissions, fields={}):
+        s = self._sessions[h] = _Session(h, user, permissions)
+        print "LOAD SESSION", s, "FOR", user
+        s.update(fields)
+        return s
 
     def get(self, h):
         assert isinstance(h, basestring)
@@ -85,6 +97,7 @@ class SessionStore(object):
                     )
                     if user is not None:
                         return self._insertSession(h, user)
+        print "SESSION FOR", h, "NOT FOUND"
 
         return self._anon
 
@@ -95,6 +108,7 @@ class SessionStore(object):
         assert session.hash in self._sessions
         session.permissions = self._app.getPermissionsFor(user.role_id)
         session.user = user
+        self._saveSession()
 
     def generateVirtualSession(self, user):
         return _Session(None, user, None)
@@ -127,4 +141,5 @@ class SessionStore(object):
 
     def _insertSession(self, h, user):
         self._sessions[h] = s = _Session(h, user, self._app.getPermissionsFor(user.role_id))
+        self._saveSession()
         return s

@@ -19,7 +19,7 @@ class Table(SmartDict):
         for f in fields:
             err = f.validate(self._values[f.name])
             if err:
-                errors[self.__table__ + '.' + f.name] = err
+                errors[f.name] = err
         return errors
 
     def insert(self, conn):
