@@ -255,11 +255,16 @@ class DBApplication(BaseApplication):
             )
             if existing_user is not None:
                 user = existing_user
+                user.addMetadata(auth_plugin, auth.metadata)
+                user.Broker.update(conn.cursor(), user)
             else:
+                user.addMetadata(auth_plugin, auth.metadata)
                 user.Broker.insert(conn.cursor(), user)
+
             assert user.id is not None
             auth.user_id = user.id
             auth.Broker.insert(conn.cursor(), auth)
+
         s = self.session_store.generateNewSession(self._conf['salt'], user)
         res['session'] = s
         self.session_hash = res['hash'] = s.hash

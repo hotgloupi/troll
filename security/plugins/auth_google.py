@@ -42,7 +42,8 @@ class AuthGoogle(object):
                 })
             except Exception, e:
                 traceback.print_exc()
-                print "ERROR: Cannot get google tokens:", e
+                print token
+                app.logger.error("ERROR: Cannot get google tokens: %s", str(e))
                 response['error'] = 'Failed to obtain access_token from google'
         elif 'error' in i:
             response['error'] = i['error']
@@ -71,10 +72,6 @@ class AuthGoogle(object):
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         response, content = client.request(url, 'POST', body=body, headers=headers)
         token = json.loads(content)
-        assert 'access_token' in token
-        assert 'refresh_token' in token
-        assert 'token_type' in token
-        assert 'expires_in' in token
         return token
 
     def _getUserMail(self, auth):
@@ -106,12 +103,11 @@ class AuthGoogle(object):
         else:
             mail = self._getUserMail(auth)
         assert mail is not None
+        auth['metadata'] = content.decode('utf-8')
         return db.User({
             'mail': mail,
             'fullname': fullname,
             'role_id': 'user',
-            'auth_type': 'google',
-            'meta': content.decode('utf-8'),
         })
 
 
