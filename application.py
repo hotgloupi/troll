@@ -69,7 +69,7 @@ class BaseApplication(object):
 
     def __init__(self, views, objects=tuple(), conf={}):
         self._conf = getConf(conf)
-        self._logger_store = LoggerStore(self._conf)
+        self._logger_store = LoggerStore(self._conf['logger_store'])
         self._objects = [
             security.db.User,
             security.db.Role,

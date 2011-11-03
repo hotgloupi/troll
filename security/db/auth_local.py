@@ -12,3 +12,5 @@ class IAuthLocal(Interface):
 AuthLocal = makeTable(IAuthLocal, 'auth_local', tuple(), {
     'user_id': User,
 })
+
+AuthLocal.metadata = {}
