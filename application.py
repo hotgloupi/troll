@@ -287,7 +287,7 @@ class DBApplication(BaseApplication):
                 self._objects,
                 self._conf['salt'],
                 self._initial_data,
-                True
+                'local' in self._auth_plugins
             )
         BaseApplication.run(self)
 

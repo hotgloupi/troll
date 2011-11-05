@@ -2,21 +2,24 @@
 
 from troll import constants
 
-def getConf(base_conf={}):
+def cleanAuth(user_conf):
     roles = {}
     roles.update(constants.ROLES)
-    roles.update(base_conf.get('roles', {}))
+    roles.update(user_conf.get('roles', {}))
 
     permissions = {}
     permissions.update(constants.PERMISSIONS)
-    permissions.update(base_conf.get('permissions', {}))
+    permissions.update(user_conf.get('permissions', {}))
 
     grants = {}
     grants.update(constants.GRANTS)
-    for role, grant in base_conf.get('grants', {}).iteritems():
+    for role, grant in user_conf.get('grants', {}).iteritems():
         base = set(grants.get(role, tuple()))
         grants[role] = tuple(base.union(grant))
 
+    return roles, permissions, grants
+
+def getConf(user_conf={}):
     conf = {
         'debug': True,
         'database': {
@@ -32,8 +35,23 @@ def getConf(base_conf={}):
         'session_store': {
 #            'file': 'sessions.dat' #session file
         },
+        'auth': {
+#            'local': {},
+#            'google': {
+#                'client_id': '',
+#                'client_secret': '',
+#                'redirect_uri': '',
+#            },
+#            'facebook': {
+#                'client_id': '',
+#                'client_secret': '',
+#                'redirect_uri': '',
+#            },
+        },
     }
-    conf.update(base_conf)
+    conf.update(user_conf)
+
+    roles, permissions, grants = cleanAuth(user_conf)
     conf.update({
         'roles': roles,
         'permissions': permissions,

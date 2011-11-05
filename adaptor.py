@@ -47,22 +47,29 @@ def dumpAdaptors():
                 adaptor.__name__
             )
 
-def adapt(objs, *interfaces):
+def getFamilyTree(Type):
+    return (
+        Type, [getFamilyTree(base) for base in Type.__bases__]
+    )
+
+def getFamilies(Type):
+    def _getFamilies(tree):
+        node, children = tree
+        if node == object:
+            yield ()
+        for families in (_getFamilies(child) for child in children):
+            for family in families:
+                yield (node,) + family
+    return _getFamilies(getFamilyTree(Type))
+
+
+def queryAdaptor(types, *interfaces):
     #from pprint import pprint
     global _adaptors
     #pprint(_adaptors)
     """
-        Adapt instance obj to given interfaces
+        return an adaptor class  to given interfaces
     """
-    if not isinstance(objs, tuple):
-        objs = (objs,)
-    families = []
-    for t in (type(o) for o in objs):
-        family = [t]
-        while len(t.__bases__) == 1 and t.__bases__[0] != object:
-            t = t.__bases__[0]
-            family.append(t)
-        families.append(family)
     def combinations(families):
         if len(families) == 1:
             for e in families[0]: yield (e,)
@@ -70,21 +77,29 @@ def adapt(objs, *interfaces):
             for e in families[0]:
                 for c in combinations(families[1:]):
                     yield (e,) + c
+    families = []
+    types_families = [getFamilies(t) for t in types]
+    for families in combinations(types_families):
+        for comb in combinations(families):
+            print "CHECK", comb
+            adaptors = _adaptors.get(comb)
+            if adaptors is not None:
+                interfaces = tuple(sorted(interfaces))
+                adaptor = adaptors.get(interfaces)
+                if adaptor is not None:
+                    return adaptor
 
-    adaptors = None
-    for types in combinations(families):
-        #print "CHECK", types
-        adaptors = _adaptors.get(types)
-        if adaptors is not None:
-            interfaces = tuple(sorted(interfaces))
-            adaptor = adaptors.get(interfaces)
-            if adaptor is not None:
-                return adaptor(*objs)
-    if adaptors is None:
-        raise Exception("Cannot adapt %s to %s " % (
-            str(objs),
-            str(interfaces)
-        ))
+def adapt(objs, *interfaces):
+    if not isinstance(objs, tuple):
+        objs = (objs,)
+    types = tuple(type(o) for o in objs)
+    adaptor = queryAdaptor(types, *interfaces)
+    if adaptor is not None:
+        return adaptor(*objs)
+    raise Exception("Cannot adapt %s to %s " % (
+        str(objs),
+        str(interfaces)
+    ))
 
 def adapts(*classes):
     """
@@ -106,10 +121,6 @@ def adapts(*classes):
         'MyAdaptor'
     """
     global _adaptors
-    #class MetaClass(type):
-    #    def __new__(cls, name, bases, dct):
-    #        print "BITE", bases
-    #        adaptor = type.__new__(cls, name, bases, dct)
     def makeMetaClass(name, bases, dct):
         metabases = tuple(set(type(b) for b in bases))
         metaclass = type('Meta_' + '_'.join(str(b) for b in bases), metabases, {})
@@ -119,13 +130,17 @@ def adapts(*classes):
         combinations = []
         for n in range(1, len(interfaces)):
             combinations.extend(
-                tuple(sorted(c)) for c in itertools.combinations(interfaces, n)
+                tuple(sorted(set(c))) for c in itertools.combinations(interfaces, n)
             )
         for c in combinations:
             if  classes not in _adaptors or c not in _adaptors[classes]:
                 register(adaptor, c, classes)
         #print 'registered adaptor', name, 'for', interfaces
         return adaptor
+
+    for cls in classes:
+        if not isinstance(cls, type):
+            raise Exception(str(cls) + " is not a type")
 
     return makeMetaClass
 
