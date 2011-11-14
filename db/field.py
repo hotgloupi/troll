@@ -31,6 +31,28 @@ class Int(Field):
             self.max is None and "+Inf" or str(self.max)
         )
 
+class Float(Field):
+
+    def __init__(self, descr, default, min=None, max=None):
+        Field.__init__(self, descr, default)
+        self.min = min
+        self.max = max
+
+    def validate(self, value):
+        if not isinstance(value, float):
+            return 'Value %s is not an instance of float' % str(value)
+        if self.min is not None and value < self.min:
+            return 'Number %d is greater than %d' % (value, self.min)
+        if self.max is not None and value > self.max:
+            return 'Number %d is lower than %d' % (value, self.min)
+        return ''
+
+    def __str__(self):
+        return "<field.Float in [%s, %s]>" % (
+            self.min is None and "-Inf" or str(self.min),
+            self.max is None and "+Inf" or str(self.max)
+        )
+
 class String(Field):
     def __init__(self, descr, default="", min=None, max=None):
         Field.__init__(self, descr, default)

@@ -6,6 +6,7 @@ from troll.security.password import hashPassword
 
 fields_create = {
     db.field.Int: "INTEGER",
+    db.field.Float: "FLOAT",
     db.field.String: "TEXT",
     db.field.Mail: "TEXT",
     db.field.Date: "TIMESTAMP",
