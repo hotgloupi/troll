@@ -30,7 +30,7 @@ class Broker(object):
         ]
         'sort': [
             ('login', True),    # descending == True
-            'id'                # <> ('id', True)
+            'id'                # <> ('id', False)
         ],
         'limit': 12,
         'offset': 15,
@@ -63,7 +63,10 @@ class Broker(object):
         limit = cls._getLimit(criterias)
         if limit:
             req += ' LIMIT %d' % int(limit)
-
+        offset = cls._getOffset(criterias)
+        if offset:
+            req += ' OFFSET %d' % int(offset)
+        print 'REQ', req
         if params is not None:
             curs.execute(req, tuple(params))
         else:
@@ -154,8 +157,11 @@ class Broker(object):
                 if not has_operator:
                     conditions_strings.append('AND')
                 if '.' not in c[0]:
+                    if c[0] not in _type.__fields_by_name__:
+                        raise Exception("Unknown field '%s' for table '%s'" % (str(c[0]), _type.__table__))
                     conditions_strings.append(_type.__table__ + '.' + c[0])
                 else:
+                    raise NotImplemented()
                     # XXX jointures ici c[0].split('.')[0]
                     conditions_strings.append(c[0])
                 has_operator = False
@@ -215,7 +221,7 @@ class Broker(object):
             for e in s:
                 if isinstance(e, basestring):
                     yield (e, False)
-                elif isinstance(e, tuple):
+                elif isinstance(e, (list, tuple)):
                     assert len(e) == 2
                     yield e
 
