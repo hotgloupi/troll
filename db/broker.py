@@ -89,7 +89,7 @@ class Broker(object):
         return curs.fetchone()[0]
 
     @classmethod
-    def fetchone(cls, curs, criterias, columns=None, _type=None):
+    def fetchone(cls, curs, criterias={}, columns=None, _type=None):
         gen = cls.fetch(curs, criterias, columns, _type)
         try:
             res = gen.next()
