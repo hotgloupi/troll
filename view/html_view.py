@@ -11,20 +11,12 @@ class Viewer(object):
         self.loader = loader
         self.pages = {}
 
-    def getTemplate(self, page):
-        if page not in self.pages:
-            self.pages[page] = self.loader.load(page, encoding="utf-8")
-        return self.pages[page]
-
-    def render(self, page, obj=None):
-        tmpl = self.getTemplate(page)
-        if obj is None:
-            obj = {}
+    def render(self, page, obj={}):
+        tmpl = self.loader.load(page, encoding="utf-8")
         tmpl = tmpl.generate(**obj)
         return tmpl.render('html', doctype='html5')
 
 class ViewerStore(threading.local):
-
     def __init__(self):
         self._viewers = {}
 
@@ -44,11 +36,17 @@ class ViewerStore(threading.local):
 class HTMLView(AbstractView):
     """
         Base class for an HTML view
-        >>> class MyView(BaseView):
-        >>>     @expose
-        >>>     def index(self):
-        >>>         return self.render('my_view.html')
+        >>> class MyView(troll.view.HTMLView):
+        >>>     __template__ = 'index.html'
+        >>>     __template_dir__ = 'templates' # this is default value, overridable also with app conf
         >>>
+        >>>     @troll.view.expose
+        >>>     def index(self):
+        >>>         return self.render()
+        >>>
+        >>>     @troll.view.expose
+        >>>     def login(self):
+        >>>         return self.render('login.html')
     """
     __viewers__ = ViewerStore()
     __template__ = None
