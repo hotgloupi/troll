@@ -161,7 +161,8 @@ class BaseApplication(object):
             app.internalerror = web.debugerror
 
         # enable fastcgi
-        #web.wsgi.runwsgi = lambda func, addr=None: web.wsgi.runfcgi(func, addr)
+        if self.conf.get('fastcgi') is True:
+            web.wsgi.runwsgi = lambda func, addr=None: web.wsgi.runfcgi(func, addr)
         self._is_running = True
 
 
