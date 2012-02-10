@@ -5,7 +5,7 @@ import itertools
 from interface import getInterfaces
 
 """
-    Let's say we have to convert Data into a PDF
+    Let's say we have to convert Data into a XML
     >>> class Data(object):
     ...     buffer = None
     >>>
