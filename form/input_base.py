@@ -27,6 +27,9 @@ class InputBase(threading.local):
     @property
     def name(self): return self._params['name']
 
+    @property
+    def params(self): return self._params
+
     def _getParams(self, additional_params={}):
         params = {'attrs': self._attrs}
         params.update(self._params)

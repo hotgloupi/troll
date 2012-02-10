@@ -11,7 +11,7 @@ class Validator:
         try: return self.test(value)
         except: return False
 
-NotNull = Validator(lambda v: v is not None and bool(v.strip()), "Required")
+NotNull = Validator(lambda v: bool(v.strip()), "Required")
 
 class Regexp(Validator):
     def __init__(self, rexp, msg=None):

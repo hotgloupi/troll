@@ -9,7 +9,7 @@ class BasicInput(InputBase):
     __has_label__ = True
 
 
-    def __init__(self, name, label=None, validator=None, error_msg=None, **kwargs):
+    def __init__(self, name, label=None, validator=None, **kwargs):
         if self.__template__ is None:
             assert self.__input_type__ is not None
             self.__class__.__template__ =  """
@@ -20,6 +20,7 @@ class BasicInput(InputBase):
 <div class="$row_class">
     <label py:if="has_label" for="$name">$label</label>
     <%(input_tag)s name="$name" type="%(input_type)s" value="$value" />
+    <div py:if="error" class="$error_class">$error</div>
 </div>
 </html>
             """ % {
@@ -29,8 +30,8 @@ class BasicInput(InputBase):
         kwargs.setdefault('label', name)
         kwargs.setdefault('has_label', self.__has_label__)
         kwargs.setdefault('row_class', 'form_row')
+        kwargs.setdefault('error_class', 'form_error')
         self.validator = validator
-        self.error_msg = error_msg
         InputBase.__init__(self, name, **kwargs)
 
     class _LazyGenerator(object):
@@ -43,7 +44,7 @@ class BasicInput(InputBase):
         def is_valid(self):
             if self._is_valid is None:
                 if self._field.validator is not None:
-                    self._is_valid = self._field.validator(self._value)
+                    self._is_valid = self._value is not None and self._field.validator(self._value)
                     assert isinstance(self._is_valid, bool)
                 else:
                     self._is_valid = True
@@ -55,8 +56,19 @@ class BasicInput(InputBase):
         @property
         def name(self): return self._field.name
 
+        @property
+        def error(self):
+            if self._value is None or self.is_valid:
+                return None
+            return self._field.validator.msg
+
         def render(self, **kwargs):
-            return self._field._render(value=self._value, **kwargs)
+            return self._field._render(
+                value=self._value,
+                error=self.error,
+                **kwargs
+            )
+
 
         def _validate(self):
             if self._field._validator is not None:

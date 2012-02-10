@@ -14,14 +14,17 @@ from input_base import InputBase
 class Form(InputBase):
     __template__ = """
 <form
-    xmlns="http://www.w3.org/1999/xhtml"
-    xmlns:py="http://genshi.edgewall.org/"
-    name="$name"
-    py:attrs="attrs"
+        xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:py="http://genshi.edgewall.org/"
+        name="$name"
+        py:attrs="attrs"
     >
     <py:for each="field in fields">
     $field
     </py:for>
+    <div py:if="errors" class="$errors_class">
+        <ul><li py:for="error in errors">$error</li></ul>
+    </div>
 </form>"""
     __attributes__ = InputBase.__attributes__ + ['method', 'action']
 
@@ -30,6 +33,7 @@ class Form(InputBase):
         self.fields = fields
         kwargs.setdefault('method', 'POST')
         kwargs.setdefault('action', '')
+        kwargs.setdefault('errors_class', 'form_errors')
         InputBase.__init__(self, name, **kwargs)
 
     class _LazyGenerator(object):
@@ -39,6 +43,7 @@ class Form(InputBase):
             self._is_valid = None
             self._fields = None
             self._fields_by_name = None
+            self._errors = None
 
         @property
         def is_valid(self):
@@ -46,6 +51,14 @@ class Form(InputBase):
                 self._is_valid = self._validate()
                 assert(isinstance(self._is_valid, bool))
             return self._is_valid
+
+        @property
+        def errors(self):
+            if len(self._input) == 0 or self.is_valid:
+                return []
+            # _validate() called by is_valid property
+            assert self._errors is not None #_validate was called
+            return self._errors
 
         @property
         def fields(self):
@@ -63,13 +76,22 @@ class Form(InputBase):
             fields = []
             for field in self.fields:
                 fields.append(genshi.HTML(field.render()))
-            return self._form._render(fields=fields, **kwargs)
+            return self._form._render(
+                fields=fields,
+                errors=self.errors,
+                **kwargs
+            )
 
         def __getitem__(self, key): return self.fields_by_name[key]
 
         def _validate(self):
+            assert self._errors is None # only one call to _validate has been done
+            self._errors = []
             if all(field.is_valid for field in self.fields):
-                return all(validator(self) for validator in self._form.validators)
+                for validator in self._form.validators:
+                    if not validators(self):
+                        self._errors.append(validators.msg)
+                return len(self._errors) == 0
             return False
 
         def __str__(self):
