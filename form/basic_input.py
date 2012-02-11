@@ -53,6 +53,9 @@ class BasicInput(InputBase):
         @property
         def value(self): return self._value
 
+        @value.setter
+        def value(self, val): self._value = val
+
         @property
         def name(self): return self._field.name
 
@@ -69,11 +72,16 @@ class BasicInput(InputBase):
                 **kwargs
             )
 
-
         def _validate(self):
             if self._field._validator is not None:
                 return self._validator(self._value)
             return True
+
+        def __eq__(self, other):
+            if isinstance(other, BasicInput):
+                return self.value == other.value
+            else:
+                return self.value == other
 
         def __str__(self):
             return "<%s: %s = %s>" % (

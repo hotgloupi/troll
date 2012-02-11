@@ -9,7 +9,10 @@ Generate and validate forms
 import genshi
 import web
 
+from troll.view.interface import IView
+
 from input_base import InputBase
+from inputs import Hidden
 
 class Form(InputBase):
     __template__ = """
@@ -19,31 +22,34 @@ class Form(InputBase):
         name="$name"
         py:attrs="attrs"
     >
+    <div py:if="errors" class="$errors_class">
+        <div py:for="error in errors" class="$error_class">$error</div>
+    </div>
     <py:for each="field in fields">
     $field
     </py:for>
-    <div py:if="errors" class="$errors_class">
-        <ul><li py:for="error in errors">$error</li></ul>
-    </div>
 </form>"""
     __attributes__ = InputBase.__attributes__ + ['method', 'action']
 
     def __init__(self, name, fields, validators=[], **kwargs):
         self.validators = validators
-        self.fields = fields
+        self.fields = fields + [Hidden('__csrf_token')]
         kwargs.setdefault('method', 'POST')
         kwargs.setdefault('action', '')
         kwargs.setdefault('errors_class', 'form_errors')
+        kwargs.setdefault('error_class', 'form_error')
         InputBase.__init__(self, name, **kwargs)
 
     class _LazyGenerator(object):
-        def __init__(self, form, input):
+        def __init__(self, form, view, input):
             self._form = form
+            self._view = view
             self._input = input
             self._is_valid = None
             self._fields = None
             self._fields_by_name = None
             self._errors = None
+            self._csrf = None
 
         @property
         def is_valid(self):
@@ -72,7 +78,17 @@ class Form(InputBase):
                 self._fields_by_name = dict((f.name, f) for f in self.fields)
             return self._fields_by_name
 
+        @property
+        def csrf(self):
+            if self._csrf is None:
+                self._csrf = self.fields_by_name['__csrf_token']
+            return self._csrf
+
+        def __getitem__(self, key): return self.fields_by_name[key]
+
+
         def render(self, **kwargs):
+            self.csrf.value = self._view.generateNewUniqueToken()
             fields = []
             for field in self.fields:
                 fields.append(genshi.HTML(field.render()))
@@ -82,15 +98,19 @@ class Form(InputBase):
                 **kwargs
             )
 
-        def __getitem__(self, key): return self.fields_by_name[key]
 
         def _validate(self):
             assert self._errors is None # only one call to _validate has been done
             self._errors = []
+
+            if self.csrf.value is None or self.csrf.value != self._view.unique_token:
+                self._errors.append("Your session has expired")
+                return False
+
             if all(field.is_valid for field in self.fields):
                 for validator in self._form.validators:
-                    if not validators(self):
-                        self._errors.append(validators.msg)
+                    if not validator(self):
+                        self._errors.append(validator.msg)
                 return len(self._errors) == 0
             return False
 
@@ -100,8 +120,9 @@ class Form(InputBase):
                 ', '.join(str(f) for f in self.fields),
             )
 
-    def generate(self, input=None):
+    def generate(self, view, input=None):
+        assert isinstance(view, IView)
         if input is None:
             input = web.input()
-        return self._LazyGenerator(self, input)
+        return self._LazyGenerator(self, view, input)
 
