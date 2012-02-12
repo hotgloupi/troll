@@ -138,3 +138,4 @@ class SessionStore(object):
         self._sessions[h] = s = _Session(h, user, self._app.getPermissionsFor(user.role_id))
         self._saveSession()
         return s
+
