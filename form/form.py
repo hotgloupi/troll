@@ -48,7 +48,7 @@ class Form(InputBase):
             self._is_valid = None
             self._fields = None
             self._fields_by_name = None
-            self._errors = None
+            self._errors = []
             self._csrf = None
 
         @property
@@ -60,10 +60,9 @@ class Form(InputBase):
 
         @property
         def errors(self):
-            if len(self._input) == 0 or self.is_valid:
-                return []
-            # _validate() called by is_valid property
-            assert self._errors is not None #_validate was called
+            if len(self._input) != 0 and self._is_valid is None:
+                self._is_valid = self._validate()
+                assert(isinstance(self._is_valid, bool))
             return self._errors
 
         @property
@@ -100,9 +99,6 @@ class Form(InputBase):
 
 
         def _validate(self):
-            assert self._errors is None # only one call to _validate has been done
-            self._errors = []
-
             if self.csrf.value is None or self.csrf.value != self._view.unique_token:
                 self._errors.append("Your session has expired")
                 return False
