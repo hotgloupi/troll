@@ -53,7 +53,7 @@ class Form(InputBase):
 
         @property
         def is_valid(self):
-            if self._is_valid is None:
+            if len(self._input) != 0 and self._is_valid is None:
                 self._is_valid = self._validate()
                 assert(isinstance(self._is_valid, bool))
             return self._is_valid
