@@ -48,3 +48,6 @@ class ThreadedDict(object):
         with self._lock:
             return self._d.update(d)
 
+    def setdefault(self, k, v):
+        with self._lock:
+            return self._d.setdefault(k, v)

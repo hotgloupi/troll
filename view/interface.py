@@ -1,5 +1,8 @@
 # -*- encoding: utf-8 -*-
 
+import time
+import hashlib
+
 from troll.interface import Interface
 
 class IView(Interface):
@@ -33,6 +36,18 @@ class IView(Interface):
             name = self.__class__.__module__ + '.' + self.__class__.__name__
             self._logger = self._app.getLogger(name)
         return self._logger
+
+    def generateNewUniqueToken(self):
+        tok = self.session['__unique_token'] = hashlib.md5(
+            str(self.user) + str(time.time())
+        ).hexdigest()
+        return tok
+
+    @property
+    def unique_token(self):
+        tok = self.session.get('__unique_token')
+        if tok is None: return self.generateNewUniqueToken()
+        return tok
 
 class IEditView(IView):
     pass

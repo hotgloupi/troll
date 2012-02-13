@@ -8,10 +8,13 @@ class Validator:
         self.msg = msg
 
     def __call__(self, value):
-        try: return self.test(value)
-        except: return False
+        try:
+            result = self.test(value)
+        except:
+            result = False
+        return result
 
-NotNull = Validator(lambda v: v is not None and bool(v.strip()), "Required")
+NotNull = Validator(lambda v: bool(v.strip()), "Required")
 
 class Regexp(Validator):
     def __init__(self, rexp, msg=None):
