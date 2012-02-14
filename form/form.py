@@ -99,6 +99,7 @@ class Form(InputBase):
 
 
         def _validate(self):
+            print "BIM"
             if self.csrf.value is None or self.csrf.value != self._view.unique_token:
                 self._errors.append("Your session has expired")
                 return False
